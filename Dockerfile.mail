@@ -22,7 +22,7 @@ RUN dnf -y install glibc-locale-source glibc-langpack-en gzip && \
     crb enable && \
     dnf -y install wget curl ca-certificates nss && \
     dnf -y install \
-        tar gcc dig make perl \
+        tar gcc bind-utils make perl \
         postfix mysql-server mysql perl-DBD-MySQL \
         php php-common php-gd php-xml php-pdo php-mysqlnd php-ldap php-pgsql php-mbstring php-pecl-apcu php-intl \
         nginx mod_ssl dovecot dovecot-pigeonhole \
