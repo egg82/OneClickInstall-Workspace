@@ -1,0 +1,5 @@
+[iRedMail]
+name=iRedMail
+baseurl=https://dl.iredmail.org/yum/rpms/8/
+enabled=1
+gpgcheck=0

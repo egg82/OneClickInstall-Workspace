@@ -1,0 +1,22 @@
+-- (mlmmj) mailing list owners.
+CREATE TABLE IF NOT EXISTS maillist_owners (
+    id BIGINT(20) UNSIGNED AUTO_INCREMENT,
+    -- email address of mailing list
+    address VARCHAR(255) NOT NULL DEFAULT '',
+    -- email address of owner
+    owner VARCHAR(255) NOT NULL DEFAULT '',
+    domain VARCHAR(255) NOT NULL DEFAULT '',
+    -- domain part of owner email address
+    dest_domain VARCHAR(255) NOT NULL DEFAULT '',
+    PRIMARY KEY (id),
+    UNIQUE INDEX (address, owner),
+    INDEX (owner),
+    INDEX (domain),
+    INDEX (dest_domain)
+) ENGINE=InnoDB;
+
+-- Drop unused SQL columns
+ALTER TABLE mailbox DROP COLUMN `allowedsenders`;
+ALTER TABLE mailbox DROP COLUMN `rejectedsenders`;
+ALTER TABLE mailbox DROP COLUMN `allowedrecipients`;
+ALTER TABLE mailbox DROP COLUMN `rejectedrecipients`;

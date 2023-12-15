@@ -30,7 +30,7 @@ MYSQL_CONTAINER_NAME="onlyoffice-mysql-server";
 
 COMMUNITY_IMAGE_NAME="onlyoffice/communityserver";
 DOCUMENT_IMAGE_NAME="onlyoffice/documentserver-ee";
-MAIL_IMAGE_NAME="onlyoffice/mailserver";
+MAIL_IMAGE_NAME="custom-mailserver";
 CONTROLPANEL_IMAGE_NAME="onlyoffice/controlpanel";
 ELASTICSEARCH_IMAGE_NAME="onlyoffice/elasticsearch";
 MYSQL_IMAGE_NAME="mariadb";
@@ -1292,6 +1292,10 @@ install_mail_server () {
 				fi
 			fi
 
+			if [[ "${MAIL_IMAGE_NAME}" = "custom-mailserver" ]]; then
+				MAIL_VERSION=""
+			fi
+
 			if [ "$CURRENT_IMAGE_NAME" != "$MAIL_IMAGE_NAME" ] || ([ "$CURRENT_IMAGE_VERSION" != "$MAIL_VERSION" ] || [ "$SKIP_VERSION_CHECK" == "true" ]) || [ "$MOVE_DATABASE" == "true" ]; then
 				check_bindings $MAIL_SERVER_ID "/var/lib/mysql";
 				MAIL_DOMAIN_NAME=$(docker exec $MAIL_SERVER_ID hostname -f);
@@ -1359,6 +1363,11 @@ install_mail_server () {
 				args+=(-e "MYSQL_ROOT_USER=$MYSQL_ROOT_USER");
 				args+=(-e "MYSQL_ROOT_PASSWD=$MYSQL_ROOT_PASSWORD");
 				args+=(-e "MYSQL_SERVER_DB_NAME=$MYSQL_MAIL_DATABASE");
+			fi
+
+			if [[ "${MAIL_IMAGE_NAME}" = "custom-mailserver" ]]; then
+				MAIL_VERSION=""
+			    docker build -f Dockerfile.mail -t "${MAIL_IMAGE_NAME}" .
 			fi
 
 			args+=(-v "$BASE_DIR/MailServer/data:/var/vmail");
@@ -2062,9 +2071,17 @@ pull_mail_server () {
 		TMP_ARRAY=(${TMP_STRING//-/ })
 		MAIL_IMAGE_NAME="${TMP_ARRAY[0]}/${TMP_ARRAY[1]}"
 		MAIL_VERSION="${TMP_ARRAY[2]}"
+
+		if [[ "${MAIL_IMAGE_NAME}" = "custom-mailserver" ]]; then
+			MAIL_VERSION=""
+		fi
 	else
 		if [[ -z ${MAIL_VERSION} ]]; then
 			MAIL_VERSION=$(get_available_version "$MAIL_IMAGE_NAME");
+		fi
+
+		if [[ "${MAIL_IMAGE_NAME}" = "custom-mailserver" ]]; then
+			MAIL_VERSION=""
 		fi
 
 		pull_image ${MAIL_IMAGE_NAME} ${MAIL_VERSION}

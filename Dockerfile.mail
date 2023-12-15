@@ -1,0 +1,72 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+ARG VERSION="2.0.0"
+ARG RELEASE_DATE="2023-12-15"
+ARG RELEASE_DATE_SIGN=""
+
+LABEL onlyoffice.mailserver.release-date="${RELEASE_DATE}" \
+      onlyoffice.mailserver.version="${VERSION}" \
+      onlyoffice.mailserver.release-date.sign="${RELEASE_DATE_SIGN}" \
+      description="Mail Server is an open-source mail server solution that allows connecting your own domain name to ONLYOFFICE collaboration platform,as well as creating and managing corporate mailboxes." \
+      maintainer="Ascensio System SIA <support@onlyoffice.com>" \
+      securitytxt="https://www.onlyoffice.com/.well-known/security.txt"
+
+COPY conf/iRedMail.repo /etc/yum.repos.d/
+COPY conf/dovecot.repo /etc/yum.repos.d/
+COPY iRedMail /usr/src/iRedMail/
+
+RUN ln -s /usr/bin/microdnf /usr/bin/yum; ln -s /usr/bin/microdnf /usr/bin/dnf; \
+    microdnf -y install glibc-locale-source glibc-langpack-en gzip && \
+    gunzip /usr/share/i18n/charmaps/UTF-8.gz; \
+    localedef -v -c -i en_US -f UTF-8 en_US.UTF-8; \
+    microdnf -y install findutils wget curl-minimal ca-certificates && \
+    wget -q -P /tmp https://download.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
+    rpm --quiet -i /tmp/epel-release-latest-9.noarch.rpm && \
+    wget -q -P /tmp https://dl.rockylinux.org/pub/rocky/9/AppStream/x86_64/os/Packages/c/clucene-core-2.3.3.4-42.20130812.e8e3d20git.el9.x86_64.rpm && \
+    rpm --quiet -i /tmp/clucene-core-2.3.3.4-42.20130812.e8e3d20git.el9.x86_64.rpm && \
+    microdnf -y install \
+        gcc make perl \
+#postfix mysql-server mysql perl-DBD-MySQL mod_auth_mysql \
+        postfix perl-DBD-MySQL \
+#php php-common php-gd php-xml php-mysql php-ldap php-pgsql php-imap php-mbstring php-pecl-apc php-intl php-mcrypt \
+        php php-common php-gd php-xml php-pdo php-mysqlnd php-ldap php-pgsql php-mbstring php-intl php-mcrypt \
+#nginx cluebringer dovecot dovecot-pigeonhole dovecot-managesieve \
+        nginx dovecot dovecot-pigeonhole \
+#amavisd-new clamd clamav-db spamassassin altermime perl-LDAP perl-Mail-SPF unrar \
+        clamd clamav-db altermime unrar \
+#python-sqlalchemy python-setuptools MySQL-python python-pip awstats \
+        python-setuptools python-pip \
+#libopendkim libopendkim-devel mysql-devel readline-devel gcc-c++ sendmail-milter sendmail-devel libbsd-devel \
+        libopendkim libopendkim-devel gcc-c++ libbsd-devel \
+#readline libyaml-devel libffi-devel openssl-devel bison \
+        readline libyaml-devel libffi-devel openssl-devel \
+#curl-devel nginx-devel sqlite-devel which libtool unzip bzip2 acl patch tmpwatch crontabs dos2unix logwatch crond imapsync opendbx-mysql \
+        curl-devel sqlite-devel which libtool unzip bzip2 acl patch crontabs dos2unix opendbx-mysql \
+    && \
+    microdnf clean all
+
+RUN find /usr/src/iRedMail -type d -name pkgs -prune -o -type f -exec dos2unix {} \; && \
+    chmod 755 /usr/src/iRedMail/iRedMail.sh && \
+    chmod 755 /usr/src/iRedMail/run_mailserver.sh  && \
+    chmod 755 /usr/src/iRedMail/install_mail.sh  && \
+    mkdir -p /etc/pki/tls/mailserver /var/vmail && \
+    openssl dhparam -out /etc/pki/tls/dhparams.pem 2048
+
+VOLUME ["/var/log"]
+VOLUME ["/var/lib/mysql"]
+VOLUME ["/var/vmail"]
+VOLUME ["/etc/pki/tls/mailserver"]
+
+EXPOSE 25
+EXPOSE 143
+EXPOSE 587
+EXPOSE 465
+EXPOSE 993
+EXPOSE 995
+EXPOSE 8081
+EXPOSE 3306
+EXPOSE 4190
+
+CMD export CONFIGURATION_ONLY='YES' && \
+    export USE_DOCKER='YES' && \
+    bash -C '/usr/src/iRedMail/install_mail.sh';
