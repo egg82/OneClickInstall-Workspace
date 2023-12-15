@@ -1,8 +1,7 @@
 #!/bin/bash
 
-os=`cat /etc/issue |grep -c CentOS`
-if [ $os = "0" ]; then
-    echo "This script work only on CentOS. Exit."
+if [ ! -f /etc/redhat-release ]; then
+    echo "This script work only on RHEL derivatives. Exit."
     exit
 fi
 # ------------------------------
