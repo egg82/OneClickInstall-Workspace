@@ -2082,9 +2082,9 @@ pull_mail_server () {
 
 		if [[ "${MAIL_IMAGE_NAME}" = "custom-mailserver" ]]; then
 			MAIL_VERSION=""
+		else
+		    pull_image ${MAIL_IMAGE_NAME} ${MAIL_VERSION}
 		fi
-
-		pull_image ${MAIL_IMAGE_NAME} ${MAIL_VERSION}
 	fi
 }
 
