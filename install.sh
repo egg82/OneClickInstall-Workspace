@@ -1374,7 +1374,11 @@ install_mail_server () {
 			args+=(-v "$BASE_DIR/MailServer/data/certs:/etc/pki/tls/mailserver");
 			args+=(-v "$BASE_DIR/MailServer/logs:/var/log");
 			args+=(-h "$MAIL_DOMAIN_NAME");
-			args+=("$MAIL_IMAGE_NAME:$MAIL_VERSION");
+			if [[ "${MAIL_IMAGE_NAME}" = "custom-mailserver" ]]; then
+			    args+=("$MAIL_IMAGE_NAME");
+			else
+				args+=("$MAIL_IMAGE_NAME:$MAIL_VERSION");
+			fi
 
 			MAJOR_DOCKER_VERSION=$(docker -v | cut -d ' ' -f3 | cut -d ',' -f1 | cut -d '-' -f1 | cut -d '.' -f1);
 
