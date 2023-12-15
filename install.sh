@@ -1135,10 +1135,14 @@ log-error = /var/log/mysql/error.log" > ${BASE_DIR}/mysql/conf.d/${PRODUCT}.cnf 
 		fi
 		
 		if [ "$INSTALL_MAIL_SERVER" = "true" ]; then
-			if [[ "$(awk -F. '{ printf("%d%03d%03d%03d", $1,$2,$3,$4); }' <<< $MYSQL_VERSION)" -ge "8000034000" ]]; then
-				MYSQL_AUTHENTICATION_PLUGIN="WITH caching_sha2_password"
+			if [[ "${MYSQL_IMAGE_NAME}" = *mariadb* ]]; then
+			    MYSQL_AUTHENTICATION_PLUGIN=""
 			else
-				MYSQL_AUTHENTICATION_PLUGIN="WITH mysql_native_password"
+				if [[ "$(awk -F. '{ printf("%d%03d%03d%03d", $1,$2,$3,$4); }' <<< $MYSQL_VERSION)" -ge "8000034000" ]]; then
+					MYSQL_AUTHENTICATION_PLUGIN="WITH caching_sha2_password"
+				else
+					MYSQL_AUTHENTICATION_PLUGIN="WITH mysql_native_password"
+				fi
 			fi
 		fi 
 
