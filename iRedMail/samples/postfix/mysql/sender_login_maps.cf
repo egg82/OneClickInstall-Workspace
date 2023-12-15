@@ -1,5 +1,6 @@
-hosts       = PH_SQL_SERVER_ADDRESS:PH_SQL_SERVER_PORT
-user        = PH_VMAIL_DB_BIND_USER
-password    = PH_VMAIL_DB_BIND_PASSWD
-dbname      = PH_VMAIL_DB_NAME
-query       = SELECT mailbox.username FROM mailbox,domain WHERE mailbox.username='%s' AND mailbox.domain='%d' AND mailbox.domain=domain.domain AND mailbox.enablesmtp=1 AND mailbox.active=1 AND domain.backupmx=0 AND domain.active=1
+user        = vmail
+password    = NSep2RRC7vzN9k6dW5bnc07fTLDEW7
+hosts       = 127.0.0.1
+port        = 3306
+dbname      = vmail
+query       = SELECT DISTINCT m.username FROM mailbox m INNER JOIN domain d ON m.domain = d.domain LEFT JOIN alias_domain ad ON d.domain = ad.target_domain INNER JOIN alias a ON (a.domain = d.domain OR a.domain = ad.target_domain) WHERE (d.domain = '%d' OR ad.alias_domain = '%d') AND (a.address='%s' OR a.address= CONCAT('%u', '@', ad.target_domain)) AND (m.username='%s' OR m.username= CONCAT('%u', '@', ad.target_domain) OR m.username=a.`goto`) AND m.enablesmtp=1 AND m.active=1 AND d.active=1 AND d.backupmx=0

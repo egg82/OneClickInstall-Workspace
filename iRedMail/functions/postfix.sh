@@ -26,403 +26,308 @@
 
 postfix_config_basic()
 {
-    ECHO_INFO "Configure Postfix (MTA)."
+    ECHO_INFO "Configure Postfix (Message Transfer Agent)."
 
-    if [ X"${DISTRO}" == "DEBIAN" -o X"${DISTRO}" == X"UBUNTU" ]; then
-        # Store FQDN in /etc/mailname.
-        # FYI: https://wiki.debian.org/EtcMailName
-        echo "${HOSTNAME}" > /etc/mailname
-    fi
-
-    #
-    # main.cf
-    #
-    export queue_directory="$(postconf -d queue_directory | awk '{print $NF}')"
-    export command_directory="$(postconf -d command_directory | awk '{print $NF}')"
-    export daemon_directory="$(postconf -d daemon_directory | awk '{print $NF}')"
-    export data_directory="$(postconf -d data_directory | awk '{print $NF}')"
-
-    export sendmail_path="$(postconf -d sendmail_path | awk '{print $NF}')"
-    export newaliases_path="$(postconf -d newaliases_path | awk '{print $NF}')"
-    export mailq_path="$(postconf -d mailq_path | awk '{print $NF}')"
-    export mail_owner="$(postconf -d mail_owner | awk '{print $NF}')"
-    export setgid_group="$(postconf -d setgid_group | awk '{print $NF}')"
-
-    if [ X"${KERNEL_NAME}" == X'FREEBSD' ]; then
-        export setgid_group='maildrop'
-    elif [ X"${KERNEL_NAME}" == X'OPENBSD' ]; then
-        export command_directory='/usr/local/sbin'
-        export daemon_directory='/usr/local/libexec/postfix'
-        export mail_owner='_postfix'
-        export setgid_group='_postdrop'
-    fi
-
-    # Copy sample main.cf and update values.
     backup_file ${POSTFIX_FILE_MAIN_CF} ${POSTFIX_FILE_MASTER_CF}
-    cp ${SAMPLE_DIR}/postfix/main.cf ${POSTFIX_FILE_MAIN_CF}
-
-    perl -pi -e 's#PH_QUEUE_DIRECTORY#$ENV{queue_directory}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_COMMAND_DIRECTORY#$ENV{command_directory}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_DAEMON_DIRECTORY#$ENV{daemon_directory}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_DATA_DIRECTORY#$ENV{data_directory}#g' ${POSTFIX_FILE_MAIN_CF}
-
-    perl -pi -e 's#PH_SENDMAIL_PATH#$ENV{sendmail_path}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_NEWALIASES_PATH#$ENV{newaliases_path}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_MAILQ_PATH#$ENV{mailq_path}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_MAIL_OWNER#$ENV{mail_owner}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_SETGID_GROUP#$ENV{setgid_group}#g' ${POSTFIX_FILE_MAIN_CF}
-
-    unset queue_directory command_directory daemon_directory data_directory
-    unset mail_owner sendmail_path newaliases_path mailq_path setgid_group
-
-    # Append LOCAL_ADDRESS in `mynetworks`
-    if [ X"${LOCAL_ADDRESS}" != X'127.0.0.1' ]; then
-        perl -pi -e 's#^(mynetworks.*)#${1} $ENV{LOCAL_ADDRESS}#g' ${POSTFIX_FILE_MAIN_CF}
-    fi
-
-    if [ X"${IREDMAIL_HAS_IPV6}" == X'YES' ]; then
-        # Append local IPv6 address in `mynetworks`
-        perl -pi -e 's#^(mynetworks.*)#${1} [::1]#g' ${POSTFIX_FILE_MAIN_CF}
-    else
-        # Disable ipv6 protocol
-        perl -pi -e 's#^(inet_protocols.*=).*#${1} ipv4#g' ${POSTFIX_FILE_MAIN_CF}
-    fi
-
-    # Update normal settings.
-    perl -pi -e 's#PH_HOSTNAME#$ENV{HOSTNAME}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_MESSAGE_SIZE_LIMIT_BYTES#$ENV{MESSAGE_SIZE_LIMIT_BYTES}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_STORAGE_BASE_DIR#$ENV{STORAGE_BASE_DIR}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_SYS_USER_VMAIL_UID#$ENV{SYS_USER_VMAIL_UID}#g' ${POSTFIX_FILE_MAIN_CF}
-
-    perl -pi -e 's#PH_SYS_GROUP_VMAIL_GID#$ENV{SYS_GROUP_VMAIL_GID}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_SYS_USER_VMAIL_UID#$ENV{SYS_USER_VMAIL_UID}#g' ${POSTFIX_FILE_MAIN_CF}
-
-    perl -pi -e 's#PH_SSL_DH512_PARAM_FILE#$ENV{SSL_DH512_PARAM_FILE}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_SSL_DH1024_PARAM_FILE#$ENV{SSL_DH1024_PARAM_FILE}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_SSL_CERT_FILE#$ENV{SSL_CERT_FILE}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_SSL_KEY_FILE#$ENV{SSL_KEY_FILE}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_SSL_CERT_DIR#$ENV{SSL_CERT_DIR}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_SSL_CA_FILE#$ENV{SSL_CA_FILE}#g' ${POSTFIX_FILE_MAIN_CF}
-
-    if [ X"${DISTRO}" == X'FREEBSD' -o X"${DISTRO}" == X'OPENBSD' ]; then
-        perl -pi -e 's#^(smtpd_tls_CApath=).*#${1}#g' ${POSTFIX_FILE_MAIN_CF}
-    fi
-
-    perl -pi -e 's#PH_POSTFIX_FILE_ALIASES#$ENV{POSTFIX_FILE_ALIASES}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_POSTFIX_FILE_HELO_ACCESS#$ENV{POSTFIX_FILE_HELO_ACCESS}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_POSTFIX_FILE_HEADER_CHECKS#$ENV{POSTFIX_FILE_HEADER_CHECKS}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_POSTFIX_FILE_BODY_CHECKS#$ENV{POSTFIX_FILE_BODY_CHECKS}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_POSTFIX_FILE_SENDER_ACCESS#$ENV{POSTFIX_FILE_SENDER_ACCESS}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_POSTFIX_FILE_SMTPD_COMMAND_FILTER#$ENV{POSTFIX_FILE_SMTPD_COMMAND_FILTER}#g' ${POSTFIX_FILE_MAIN_CF}
-
-    # Create required files and set correct owner + permission
-    _files="${POSTFIX_FILE_HELO_ACCESS} ${POSTFIX_FILE_HEADER_CHECKS} ${POSTFIX_FILE_BODY_CHECKS} ${POSTFIX_FILE_SENDER_ACCESS}"
-    touch ${_files}
-    chown ${SYS_USER_ROOT}:${SYS_GROUP_POSTFIX} ${_files}
-    chmod 0640 ${_files}
-    unset _files
-
-    # iRedAPD
-    perl -pi -e 's#PH_IREDAPD_SERVER_ADDRESS#$ENV{IREDAPD_SERVER_ADDRESS}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_IREDAPD_LISTEN_PORT#$ENV{IREDAPD_LISTEN_PORT}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_IREDAPD_SRS_FORWARD_PORT#$ENV{IREDAPD_SRS_FORWARD_PORT}#g' ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_IREDAPD_SRS_REVERSE_PORT#$ENV{IREDAPD_SRS_REVERSE_PORT}#g' ${POSTFIX_FILE_MAIN_CF}
-
-    # Dovecot quota-status service
-    perl -pi -e 's#PH_DOVECOT_SERVICE_QUOTA_STATUS_PORT#$ENV{DOVECOT_SERVICE_QUOTA_STATUS_PORT}#g' ${POSTFIX_FILE_MAIN_CF}
-
-    #
-    # master.cf
-    #
-    _postfix_version="$(postconf -d mail_version | awk '{print $NF}')"
-    if echo ${_postfix_version} | grep '^3' &>/dev/null; then
-        # Postfix v3
-        if [[ X"${DISTRO}" == X'OPENBSD' ]]; then
-            postconf -e compatibility_level=3.6
-        else
-            postconf -e compatibility_level=2
-        fi
-
-        # The master.cf chroot default value has changed from "y" (yes) to "n" (no).
-        for i in $(postconf -Mf | grep '^[0-9a-zA-Z]' | awk '{print $1"/"$2"/chroot=n"}'); do
-            postconf -F $i
-        done
-
-        # Disable smtputf8 if EAI support is not compiled in.
-        if postconf -m 2>&1 |grep 'warning: smtputf8_enable' &>/dev/null; then
-            postconf -e smtputf8_enable=no
-        fi
-    fi
 
     ECHO_DEBUG "Enable chroot."
     perl -pi -e 's/^(smtp.*inet)(.*)(n)(.*)(n)(.*smtpd)$/${1}${2}${3}${4}-${6}/' ${POSTFIX_FILE_MASTER_CF}
 
-    ECHO_DEBUG "Enable submission and additional transports required by Amavisd and Dovecot."
-    cat ${SAMPLE_DIR}/postfix/master.cf >> ${POSTFIX_FILE_MASTER_CF}
+    # Comment out the parameter first to avoid duplicate entries
+    perl -pi -e 's/^(inet_protocols*)/#${1}/' ${POSTFIX_FILE_MAIN_CF}
+    # Disable IPv6 here since old Cluebringer release doesn't support ipv6.
+    postconf -e inet_protocols='ipv4'
 
-    # set smtp server
-    perl -pi -e 's#PH_SMTP_SERVER#$ENV{SMTP_SERVER}#g' ${POSTFIX_FILE_MASTER_CF}
-    perl -pi -e 's#PH_AMAVISD_CONTENT_FILTER_ORIGINATING#$ENV{AMAVISD_CONTENT_FILTER_ORIGINATING}#g' ${POSTFIX_FILE_MASTER_CF}
-
-    # set mailbox owner: user/group
-    perl -pi -e 's#PH_SYS_USER_VMAIL#$ENV{SYS_USER_VMAIL}#g' ${POSTFIX_FILE_MASTER_CF}
-    perl -pi -e 's#PH_SYS_GROUP_VMAIL#$ENV{SYS_GROUP_VMAIL}#g' ${POSTFIX_FILE_MASTER_CF}
-
-    # Amavisd integration.
-    perl -pi -e 's#PH_LOCAL_ADDRESS#$ENV{LOCAL_ADDRESS}#g' ${POSTFIX_FILE_MASTER_CF}
-    perl -pi -e 's#PH_AMAVISD_MAX_SERVERS#$ENV{AMAVISD_MAX_SERVERS}#g' ${POSTFIX_FILE_MASTER_CF}
-    perl -pi -e 's#PH_AMAVISD_MYNETWORKS#$ENV{AMAVISD_MYNETWORKS}#g' ${POSTFIX_FILE_MASTER_CF}
-    perl -pi -e 's#PH_POSTFIX_MAIL_REINJECT_PORT#$ENV{POSTFIX_MAIL_REINJECT_PORT}#g' ${POSTFIX_FILE_MASTER_CF}
-    perl -pi -e 's#PH_AMAVISD_ORIGINATING_PORT#$ENV{AMAVISD_ORIGINATING_PORT}#g' ${POSTFIX_FILE_MASTER_CF}
-
-    # Enable `content_filter` for `pickup` transport:
-    #   - Treat all emails generated locally as outbound
-    #   - sign DKIM signature
-    #   - do spam/virus scanning
-    _pickup_orig="$(postconf -M |grep '^pickup')"
-    echo ${_pickup_orig} | grep 'content_filter=' &>/dev/null
-    if [ X"$?" != X'0' ]; then
-        postconf -M "pickup/unix=${_pickup_orig}"
-        postconf -P "pickup/unix/content_filter=${AMAVISD_CONTENT_FILTER_ORIGINATING}"
-    fi
-
-    # mlmmj integration.
-    perl -pi -e 's#PH_POSTFIX_MLMMJ_REINJECT_PORT#$ENV{POSTFIX_MLMMJ_REINJECT_PORT}#g' ${POSTFIX_FILE_MASTER_CF}
-
-    # Dovecot LDA
-    perl -pi -e 's#PH_DOVECOT_DELIVER_BIN#$ENV{DOVECOT_DELIVER_BIN}#g' ${POSTFIX_FILE_MASTER_CF}
-
-    # mlmmj
-    perl -pi -e 's#PH_SYS_USER_MLMMJ#$ENV{SYS_USER_MLMMJ}#g' ${POSTFIX_FILE_MASTER_CF}
-    perl -pi -e 's#PH_SYS_GROUP_MLMMJ#$ENV{SYS_GROUP_MLMMJ}#g' ${POSTFIX_FILE_MASTER_CF}
-    perl -pi -e 's#PH_CMD_MLMMJ_AMIME_RECEIVE#$ENV{CMD_MLMMJ_AMIME_RECEIVE}#g' ${POSTFIX_FILE_MASTER_CF}
-    perl -pi -e 's#PH_MLMMJ_SPOOL_DIR#$ENV{MLMMJ_SPOOL_DIR}#g' ${POSTFIX_FILE_MASTER_CF}
+    # Do not set virtual_alias_domains.
+    perl -pi -e 's/^(virtual_alias_domains*)/#${1}/' ${POSTFIX_FILE_MAIN_CF}
+    postconf -e virtual_alias_domains=''
 
     ECHO_DEBUG "Copy: /etc/{hosts,resolv.conf,localtime,services} -> ${POSTFIX_CHROOT_DIR}/etc/"
     mkdir -p ${POSTFIX_CHROOT_DIR}/etc/ >> ${INSTALL_LOG} 2>&1
     for i in /etc/hosts /etc/resolv.conf /etc/localtime /etc/services; do
-        [[ -f $i ]] && cp ${i} ${POSTFIX_CHROOT_DIR}/etc/
+        [ -f $i ] && cp ${i} ${POSTFIX_CHROOT_DIR}/etc/
     done
+
+    postconf -e myhostname="${HOSTNAME}"
+    postconf -e myorigin="${HOSTNAME}"
+    postconf -e mydomain="${HOSTNAME}"
+
+    # Disable the rewriting of the form "user%domain" to "user@domain".
+    postconf -e allow_percent_hack='no'
+    # Disable the rewriting of "site!user" into "user@site".
+    postconf -e swap_bangpath='no'
+
+    postconf -e mydestination="\$myhostname, localhost, localhost.localdomain"
+
+    # Do not notify local user.
+    postconf -e biff='no'
+    postconf -e inet_interfaces="all"
+    postconf -e mynetworks="127.0.0.1"
+    postconf -e mynetworks_style="host"
+    postconf -e smtpd_data_restrictions='reject_unauth_pipelining'
+    postconf -e smtpd_reject_unlisted_recipient='yes'
+    postconf -e smtpd_reject_unlisted_sender='yes'
+
+    # Disable SSLv3
+    # Opportunistic TLS
+    postconf -e smtpd_tls_protocols='!SSLv2 !SSLv3'
+    postconf -e smtp_tls_protocols='!SSLv2 !SSLv3'
+    postconf -e lmtp_tls_protocols='!SSLv2 !SSLv3'
+    # Mandatory TLS
+    postconf -e smtpd_tls_mandatory_protocols='!SSLv2 !SSLv3'
+    postconf -e smtp_tls_mandatory_protocols='!SSLv2 !SSLv3'
+    postconf -e lmtp_tls_mandatory_protocols='!SSLv2 !SSLv3'
+    # Fix 'The Logjam Attack'.
+    postconf -e smtpd_tls_mandatory_exclude_ciphers='aNULL, eNULL, EXPORT, DES, RC4, MD5, PSK, aECDH, EDH-DSS-DES-CBC3-SHA, EDH-RSA-DES-CDC3-SHA, KRB5-DE5, CBC3-SHA'
+    postconf -e smtpd_tls_dh1024_param_file="${SSL_DHPARAM_FILE}"
+
+    # Opportunistic TLS, used when Postfix sends email to remote SMTP server.
+    # Use TLS if this is supported by the remote SMTP server, otherwise use
+    # plaintext.
+    # References:
+    #   - http://www.postfix.org/TLS_README.html#client_tls_may
+    #   - http://www.postfix.org/postconf.5.html#smtp_tls_security_level
+    postconf -e smtp_tls_security_level='may'
+    # Use the same CA file as smtpd.
+    postconf -e smtp_tls_CAfile='$smtpd_tls_CAfile'
+    postconf -e smtp_tls_loglevel='0'
+    postconf -e smtp_tls_note_starttls_offer='yes'
+
+    # Sender restrictions
+    postconf -e smtpd_sender_restrictions="reject_unknown_sender_domain, reject_non_fqdn_sender, reject_unlisted_sender, permit_mynetworks, reject_sender_login_mismatch, permit_sasl_authenticated"
+
+
+    postconf -e delay_warning_time='0h'
+    postconf -e maximal_queue_lifetime='4h'
+    postconf -e bounce_queue_lifetime='4h'
+    postconf -e recipient_delimiter='+'
+    postconf -e proxy_read_maps='$canonical_maps $lmtp_generic_maps $local_recipient_maps $mydestination $mynetworks $recipient_bcc_maps $recipient_canonical_maps $relay_domains $relay_recipient_maps $relocated_maps $sender_bcc_maps $sender_canonical_maps $smtp_generic_maps $smtpd_sender_login_maps $transport_maps $virtual_alias_domains $virtual_alias_maps $virtual_mailbox_domains $virtual_mailbox_maps $smtpd_sender_restrictions'
+
+    postconf -e smtp_data_init_timeout='240s'
+    postconf -e smtp_data_xfer_timeout='600s'
+
+    # HELO restriction
+    postconf -e smtpd_helo_required="yes"
+    postconf -e smtpd_helo_restrictions="permit_mynetworks, permit_sasl_authenticated, reject_non_fqdn_helo_hostname, reject_invalid_helo_hostname, check_helo_access pcre:${POSTFIX_FILE_HELO_ACCESS}, reject_unknown_helo_hostname"
 
     backup_file ${POSTFIX_FILE_HELO_ACCESS}
     cp -f ${SAMPLE_DIR}/postfix/helo_access.pcre ${POSTFIX_FILE_HELO_ACCESS}
 
-    backup_file ${POSTFIX_FILE_SMTPD_COMMAND_FILTER}
-    cp -f ${SAMPLE_DIR}/postfix/command_filter.pcre ${POSTFIX_FILE_SMTPD_COMMAND_FILTER}
+    # Reduce queue run delay time.
+    postconf -e queue_run_delay='300s'          # default '300s' in postfix-2.4.
+    postconf -e minimal_backoff_time='300s'     # default '300s' in postfix-2.4.
+    postconf -e maximal_backoff_time='1800s'    # default '4000s' in postfix-2.4.
+
+    # Avoid duplicate recipient messages. Default is 'yes'.
+    postconf -e enable_original_recipient='no'
+
+    # Disable the SMTP VRFY command. This stops some techniques used to
+    # harvest email addresses.
+    postconf -e disable_vrfy_command='yes'
+
+    # We use 'maildir' format, not 'mbox'.
+    if [ X"${MAILBOX_FORMAT}" == X"Maildir" ]; then
+        postconf -e home_mailbox="Maildir/"
+    fi
+
+    postconf -e maximal_backoff_time="4000s"
+
+    # Allow recipient address start with '-'.
+    postconf -e allow_min_user='no'
 
     # Update Postfix aliases file.
-    add_postfix_alias nobody ${SYS_USER_ROOT}
-    add_postfix_alias ${SYS_USER_VMAIL} ${SYS_USER_ROOT}
-    add_postfix_alias ${SYS_USER_ROOT} ${DOMAIN_ADMIN_EMAIL}
+    add_postfix_alias nobody ${SYS_ROOT_USER}
+    add_postfix_alias ${VMAIL_USER_NAME} ${SYS_ROOT_USER}
+    add_postfix_alias ${SYS_ROOT_USER} ${FIRST_USER}@${FIRST_DOMAIN}
 
-    if [ X"${DISTRO}" == X'DEBIAN' -o X"${DISTRO}" == X'UBUNTU' ]; then
-        # Since `mail.*` is logged to /var/log/mail.log, no need to log
-        # `mail.err` to /var/log/mail.err separately.
-        ECHO_DEBUG "Disable duplicate log entries (mail.{info,warn,err}) in syslog config file."
+    postconf -e alias_maps="hash:${POSTFIX_FILE_ALIASES}"
+    postconf -e alias_database="hash:${POSTFIX_FILE_ALIASES}"
 
-        for f in ${SYSLOG_CONF} ${SYSLOG_CONF_DIR}/50-default.conf; do
-            if [ -f ${f} ]; then
-                perl -pi -e 's/^(mail.info.*mail.info)$/#${1}/' ${f}
-                perl -pi -e 's/^(mail.warn.*mail.warn)$/#${1}/' ${f}
-                perl -pi -e 's/^(mail.err.*mail.err)$/#${1}/' ${f}
-            fi
-        done
-    elif [ X"${DISTRO}" == X'FREEBSD' ]; then
-        # FreeBSD: Start postfix when system start up.
-        backup_file /etc/mail/mailer.conf
-        cp -f ${SAMPLE_DIR}/postfix/freebsd/mailer.conf /etc/mail/mailer.conf
-        chmod +r /etc/mail/mailer.conf
+    # Set message_size_limit.
+    postconf -e message_size_limit="${MESSAGE_SIZE_LIMIT}"
+    # Set smtpd_recipient_limit.
+    postconf -e smtpd_recipient_limit="${RECIPIENTS_NUMBER}"
+    # Virtual support.
+    postconf -e virtual_minimum_uid="${VMAIL_USER_UID}"
+    postconf -e virtual_uid_maps="static:${VMAIL_USER_UID}"
+    postconf -e virtual_gid_maps="static:${VMAIL_USER_GID}"
+    postconf -e virtual_mailbox_base="${STORAGE_BASE_DIR}"
 
-        # Start service when system start up.
-        service_control enable 'postfix_enable' 'YES'
-        service_control enable 'sendmail_enable' 'NO'
-        service_control enable 'sendmail_submit_enable' 'NO'
-        service_control enable 'sendmail_outbound_enable' 'NO'
-        service_control enable 'sendmail_msp_queue_enable' 'NO'
-        service_control enable 'daily_clean_hoststat_enable' 'NO'
-        service_control enable 'daily_status_mail_rejects_enable' 'NO'
-        service_control enable 'daily_status_include_submit_mailq' 'NO'
-        service_control enable 'daily_submit_queuerun' 'NO'
 
-    elif [ X"${DISTRO}" == X'OPENBSD' ]; then
-        # Replace sendmail, opensmtpd by Postfix
-        echo 'sendmail_flags=NO' >> ${RC_CONF_LOCAL}
-        echo 'smtpd_flags=NO' >> ${RC_CONF_LOCAL}
-        /usr/local/sbin/postfix-enable >> ${INSTALL_LOG} 2>&1
-        perl -pi -e 's/(.*sendmail -L sm-msp-queue.*)/#${1}/' ${CRON_FILE_ROOT}
+    postconf -e smtpd_delay_reject="yes"
+    
+    if  [ X"${USE_DOCKER}" != X"YES" ]; then
+        postconf -e anvil_rate_time_unit="60s"
+        postconf -e smtpd_client_message_rate_limit="5"
     fi
 
-    # Update /etc/host.conf to solve warning message in Postfix like this:
-    # "warning: hostname xxx does not resolve to address 127.0.0.1"
-    if [ -f /etc/host.conf ]; then
-        if ! grep '^multi on$' /etc/host.conf &>/dev/null; then
-            echo 'multi on' >> /etc/host.conf
-        fi
-    fi
-
-    # Create symbol link: /var/log/mail.log -> maillog
-    # So that all linux/bsd distributions have the same maillog file.
-    if [ X"${DISTRO}" == X'DEBIAN' -o X"${DISTRO}" == X'UBUNTU' ]; then
-        if [ -f ${MAILLOG} -a ! -f /var/log/maillog ]; then
-            ln -s ${MAILLOG} /var/log/maillog
-        fi
-    fi
-
-    echo 'export status_postfix_config_basic="DONE"' >> ${STATUS_FILE}
-}
-
-postfix_config_vhost()
-{
-    ECHO_DEBUG "Configure Postfix for SQL/LDAP lookup."
-
-    # Create directory which used to store sql/ldap lookup files.
-    [[ -d ${POSTFIX_LOOKUP_DIR} ]] || mkdir -p ${POSTFIX_LOOKUP_DIR}
-
-    cat ${SAMPLE_DIR}/postfix/main.cf.${POSTFIX_LOOKUP_DB} >> ${POSTFIX_FILE_MAIN_CF}
-    perl -pi -e 's#PH_POSTFIX_LOOKUP_DIR#$ENV{POSTFIX_LOOKUP_DIR}#g' ${POSTFIX_FILE_MAIN_CF}
-
-    cp -f ${SAMPLE_DIR}/postfix/${POSTFIX_LOOKUP_DB}/*.cf ${POSTFIX_LOOKUP_DIR}
-
-    chown ${SYS_USER_ROOT}:${SYS_GROUP_POSTFIX} ${POSTFIX_LOOKUP_DIR}/*.cf
-    chmod 0640 ${POSTFIX_LOOKUP_DIR}/*.cf
-
-    if [ X"${BACKEND}" == X'OPENLDAP' ]; then
-        # LDAP server and bind dn/password
-        perl -pi -e 's#PH_LDAP_SERVER_HOST#$ENV{LDAP_SERVER_HOST}#g' ${POSTFIX_LOOKUP_DIR}/*.cf
-        perl -pi -e 's#PH_LDAP_SERVER_PORT#$ENV{LDAP_SERVER_PORT}#g' ${POSTFIX_LOOKUP_DIR}/*.cf
-        perl -pi -e 's#PH_LDAP_BIND_VERSION#$ENV{LDAP_BIND_VERSION}#g' ${POSTFIX_LOOKUP_DIR}/*.cf
-        perl -pi -e 's#PH_LDAP_BASEDN#$ENV{LDAP_BASEDN}#g' ${POSTFIX_LOOKUP_DIR}/*.cf
-        perl -pi -e 's#PH_LDAP_BINDDN#$ENV{LDAP_BINDDN}#g' ${POSTFIX_LOOKUP_DIR}/*.cf
-        perl -pi -e 's#PH_LDAP_BINDPW#$ENV{LDAP_BINDPW}#g' ${POSTFIX_LOOKUP_DIR}/*.cf
-
-        perl -pi -e 's#PH_LDAP_ATTR_GROUP_USERS#$ENV{LDAP_ATTR_GROUP_USERS}#g' ${POSTFIX_LOOKUP_DIR}/*.cf
-        perl -pi -e 's#PH_LDAP_ATTR_GROUP_GROUPS#$ENV{LDAP_ATTR_GROUP_GROUPS}#g' ${POSTFIX_LOOKUP_DIR}/*.cf
-    elif [ X"${BACKEND}" == X'MYSQL' -o X"${BACKEND}" == X'PGSQL' ]; then
-        # SQL server, port, bind username, password
-        perl -pi -e 's#PH_SQL_SERVER_ADDRESS#$ENV{SQL_SERVER_ADDRESS}#g' ${POSTFIX_LOOKUP_DIR}/*.cf
-        perl -pi -e 's#PH_SQL_SERVER_PORT#$ENV{SQL_SERVER_PORT}#g' ${POSTFIX_LOOKUP_DIR}/*.cf
-        perl -pi -e 's#PH_VMAIL_DB_BIND_USER#$ENV{VMAIL_DB_BIND_USER}#g' ${POSTFIX_LOOKUP_DIR}/*.cf
-        perl -pi -e 's#PH_VMAIL_DB_BIND_PASSWD#$ENV{VMAIL_DB_BIND_PASSWD}#g' ${POSTFIX_LOOKUP_DIR}/*.cf
-        perl -pi -e 's#PH_VMAIL_DB_NAME#$ENV{VMAIL_DB_NAME}#g' ${POSTFIX_LOOKUP_DIR}/*.cf
-    fi
-
-    echo 'export status_postfix_config_vhost="DONE"' >> ${STATUS_FILE}
-}
-
-postfix_config_postscreen()
-{
-    ECHO_DEBUG "Enable postscreen service."
-
-    backup_file ${POSTSCREEN_FILE_ACCESS_CIDR} ${POSTSCREEN_FILE_DNSBL_REPLY}
-
-    export POSTFIX_VERSION="$(postconf mail_version 2>/dev/null | awk '{print $NF}')"
-    if echo ${POSTFIX_VERSION} | grep '^2\.[01234567]\.' &>/dev/null; then
-        ECHO_ERROR "postscreen requires Postfix 2.8 or later, you're running ${POSTFIX_VERSION}."
-        ECHO_ERROR "postscreen service not enabled."
-    else
-        ECHO_DEBUG "Comment out 'smtp inet ... smtpd' service in ${POSTFIX_FILE_MASTER_CF}."
-        perl -pi -e 's/^(smtp .*inet.*smtpd)$/#${1}/g' ${POSTFIX_FILE_MASTER_CF}
-
-        ECHO_DEBUG "Uncomment the new 'smtpd pass ... smtpd' service in ${POSTFIX_FILE_MASTER_CF}."
-        perl -pi -e 's/^#(smtpd.*pass.*smtpd)$/${1}/g' ${POSTFIX_FILE_MASTER_CF}
-
-        ECHO_DEBUG "Uncomment the new "smtp inet ... postscreen" service in ${POSTFIX_FILE_MASTER_CF}."
-        perl -pi -e 's/^#(smtp *.*inet.*postscreen)$/${1}/g' ${POSTFIX_FILE_MASTER_CF}
-
-        ECHO_DEBUG "Uncomment the new 'tlsproxy unix ... tlsproxy' service in ${POSTFIX_FILE_MASTER_CF}."
-        perl -pi -e 's/^#(tlsproxy.*unix.*tlsproxy)$/${1}/g' ${POSTFIX_FILE_MASTER_CF}
-
-        ECHO_DEBUG "Uncomment the new 'dnsblog unix ... dnsblog' service in ${POSTFIX_FILE_MASTER_CF}."
-        perl -pi -e 's/^#(dnsblog.*unix.*dnsblog)$/${1}/g' ${POSTFIX_FILE_MASTER_CF}
-
-        #
-        # main.cf
-        #
-        ECHO_DEBUG "Update ${POSTFIX_FILE_MAIN_CF} to enable postscreen."
-        cat ${SAMPLE_DIR}/postfix/main.cf.postscreen >> ${POSTFIX_FILE_MAIN_CF}
-
-        perl -pi -e 's#PH_POSTSCREEN_FILE_DNSBL_REPLY#$ENV{POSTSCREEN_FILE_DNSBL_REPLY}#g' ${POSTFIX_FILE_MAIN_CF}
-        touch ${POSTSCREEN_FILE_DNSBL_REPLY}
-
-        perl -pi -e 's#PH_POSTSCREEN_FILE_ACCESS_CIDR#$ENV{POSTSCREEN_FILE_ACCESS_CIDR}#g' ${POSTFIX_FILE_MAIN_CF}
-        cp -f ${SAMPLE_DIR}/postfix/postscreen_access.cidr ${POSTSCREEN_FILE_ACCESS_CIDR}
-
-        # Require Postfix-2.11+
-        if echo ${POSTFIX_VERSION} | egrep '(^3|^2\.[123456789][123456789])' &>/dev/null; then
-            perl -pi -e 's/^#(postscreen_dnsbl_whitelist_threshold.*)/${1}/g' ${POSTFIX_FILE_MAIN_CF}
-        fi
-
-        # Set a not existing directory as default value, if we cannot get
-        # ${queue_directory} for some reason, it won't mistakenly reset owner
-        # and permission on '/'
-        export queue_directory="$(postconf queue_directory | awk '{print $NF}')"
-        export data_directory="$(postconf data_directory | awk '{print $NF}')"
-        _chrooted_data_directory="${queue_directory:=/tmp/not-exist}/${data_directory}"
-
-        unset queue_directory data_directory
-
-        ECHO_DEBUG "Create ${_chrooted_data_directory}/postscreen_cache.db."
-        if [ ! -d ${_chrooted_data_directory} ]; then
-            mkdir -p ${_chrooted_data_directory}
-            chown ${SYS_USER_POSTFIX}:${SYS_GROUP_ROOT} ${_chrooted_data_directory}
-            chmod 0700 ${_chrooted_data_directory}
-        fi
-
-        # Create db file.
-        cd ${_chrooted_data_directory}
-        touch postscreen_cache
-        postmap btree:postscreen_cache
-        rm postscreen_cache
-        chown ${SYS_USER_POSTFIX}:${SYS_GROUP_POSTFIX} postscreen_cache.db
-        chmod 0700 postscreen_cache.db
-    fi
-
-    echo 'export status_postfix_config_postscreen="DONE"' >> ${STATUS_FILE}
-}
-
-postfix_config_logwatch()
-{
-    # Enable long queue ID.
-    if [[ -n ${LOGWATCH_SERVICES_DIR} ]]; then
-        # Create the directory if not present.
-        #
-        # logwatch package may be missing on the server, continue adding the
-        # modular config file to avoid the issue if sysadmin installs logwatch
-        # someday in the future.
-        [[ -d ${LOGWATCH_SERVICES_DIR} ]] || mkdir -p ${LOGWATCH_SERVICES_DIR}
-
-        f="${LOGWATCH_SERVICES_DIR}/postfix.conf"
-
-        if ! grep '\$postfix_Enable_Long_Queue_Ids' ${f} &>/dev/null; then
-            cat >> ${f} <<EOF
-\$postfix_Enable_Long_Queue_Ids = Yes
-EOF
-        fi
-    fi
-
-    echo 'export status_postfix_config_logwatch="DONE"' >> ${STATUS_FILE}
-}
-
-postfix_setup()
-{
-    # Include all sub-steps
-    check_status_before_run postfix_config_basic && \
-    check_status_before_run postfix_config_vhost && \
-    check_status_before_run postfix_config_postscreen && \
-    check_status_before_run postfix_config_logwatch
 
     cat >> ${TIP_FILE} <<EOF
-Postfix:
+Postfix (basic):
     * Configuration files:
         - ${POSTFIX_ROOTDIR}
         - ${POSTFIX_ROOTDIR}/aliases
         - ${POSTFIX_FILE_MAIN_CF}
         - ${POSTFIX_FILE_MASTER_CF}
 
-    * SQL/LDAP lookup config files:
-        - ${POSTFIX_LOOKUP_DIR}
+EOF
+
+    # Create directory, used to store lookup files.
+    [ -d ${POSTFIX_LOOKUP_DIR} ] || mkdir -p ${POSTFIX_LOOKUP_DIR}
+
+    echo 'export status_postfix_config_basic="DONE"' >> ${STATUS_FILE}
+}
+
+postfix_config_vhost_mysql()
+{
+    ECHO_DEBUG "Configure Postfix for MySQL lookup."
+
+    postconf -e transport_maps="proxy:mysql:${mysql_transport_maps_user_cf}, proxy:mysql:${mysql_transport_maps_domain_cf}"
+    postconf -e virtual_mailbox_domains="proxy:mysql:${mysql_virtual_mailbox_domains_cf}"
+    postconf -e virtual_mailbox_maps="proxy:mysql:${mysql_virtual_mailbox_maps_cf}"
+    postconf -e virtual_alias_maps="proxy:mysql:${mysql_virtual_alias_maps_cf}, proxy:mysql:${mysql_domain_alias_maps_cf}, proxy:mysql:${mysql_catchall_maps_cf}, proxy:mysql:${mysql_domain_alias_catchall_maps_cf}"
+    postconf -e sender_bcc_maps="proxy:mysql:${mysql_sender_bcc_maps_user_cf}, proxy:mysql:${mysql_sender_bcc_maps_domain_cf}"
+    postconf -e recipient_bcc_maps="proxy:mysql:${mysql_recipient_bcc_maps_user_cf}, proxy:mysql:${mysql_recipient_bcc_maps_domain_cf}"
+    postconf -e relay_domains="\$mydestination, proxy:mysql:${mysql_relay_domains_cf}"
+    postconf -e smtpd_sender_login_maps="proxy:mysql:${mysql_sender_login_maps_cf}"
+
+    # Per-domain and per-user transport maps.
+    cp ${SAMPLE_DIR}/postfix/mysql/transport_maps_domain.cf ${mysql_transport_maps_domain_cf}
+    cp ${SAMPLE_DIR}/postfix/mysql/transport_maps_user.cf ${mysql_transport_maps_user_cf}
+
+    # Virtual domains
+    cp ${SAMPLE_DIR}/postfix/mysql/virtual_mailbox_domains.cf ${mysql_virtual_mailbox_domains_cf}
+    # Relay domains
+    cp ${SAMPLE_DIR}/postfix/mysql/relay_domains.cf ${mysql_relay_domains_cf}
+    # Virtual mail users
+    cp ${SAMPLE_DIR}/postfix/mysql/virtual_mailbox_maps.cf ${mysql_virtual_mailbox_maps_cf}
+    # Virtual alias
+    cp ${SAMPLE_DIR}/postfix/mysql/virtual_alias_maps.cf ${mysql_virtual_alias_maps_cf}
+    # Alias domain
+    cp ${SAMPLE_DIR}/postfix/mysql/domain_alias_maps.cf ${mysql_domain_alias_maps_cf}
+    # Catch-all
+    cp ${SAMPLE_DIR}/postfix/mysql/catchall_maps.cf ${mysql_catchall_maps_cf}
+    # Alias domain support of catch-all
+    cp ${SAMPLE_DIR}/postfix/mysql/domain_alias_catchall_maps.cf ${mysql_domain_alias_catchall_maps_cf}
+    # Sender login maps
+    cp ${SAMPLE_DIR}/postfix/mysql/sender_login_maps.cf ${mysql_sender_login_maps_cf}
+    # Sender bcc maps
+    cp ${SAMPLE_DIR}/postfix/mysql/sender_bcc_maps_domain.cf ${mysql_sender_bcc_maps_domain_cf}
+    cp ${SAMPLE_DIR}/postfix/mysql/sender_bcc_maps_user.cf ${mysql_sender_bcc_maps_user_cf}
+    # Recipient bcc maps
+    cp ${SAMPLE_DIR}/postfix/mysql/recipient_bcc_maps_domain.cf ${mysql_recipient_bcc_maps_domain_cf}
+    cp ${SAMPLE_DIR}/postfix/mysql/recipient_bcc_maps_user.cf ${mysql_recipient_bcc_maps_user_cf}
+
+    ECHO_DEBUG "Set file permission: Owner/Group -> postfix/postfix, Mode -> 0640."
+    cat >> ${TIP_FILE} <<EOF
+Postfix (MySQL):
+    * Configuration files:
+EOF
+
+    for i in \
+        ${mysql_transport_maps_domain_cf} \
+        ${mysql_transport_maps_user_cf} \
+        ${mysql_virtual_mailbox_domains_cf} \
+        ${mysql_relay_domains_cf} \
+        ${mysql_virtual_mailbox_maps_cf} \
+        ${mysql_virtual_alias_maps_cf} \
+        ${mysql_domain_alias_maps_cf} \
+        ${mysql_catchall_maps_cf} \
+        ${mysql_domain_alias_catchall_maps_cf} \
+        ${mysql_sender_login_maps_cf} \
+        ${mysql_sender_bcc_maps_domain_cf} \
+        ${mysql_sender_bcc_maps_user_cf} \
+        ${mysql_recipient_bcc_maps_domain_cf} \
+        ${mysql_recipient_bcc_maps_user_cf}; do
+
+        # Set file owner and permission
+        chown ${SYS_ROOT_USER}:${POSTFIX_DAEMON_GROUP} ${i}
+        chmod 0640 ${i}
+
+        # Place placeholders
+        perl -pi -e 's#^(user * = ).*#${1}$ENV{VMAIL_DB_ADMIN_USER}#' ${i}
+        perl -pi -e 's#^(password * = ).*#${1}$ENV{VMAIL_DB_ADMIN_PASSWD}#' ${i}
+        perl -pi -e 's#^(hosts * = ).*#${1}$ENV{SQL_SERVER}#' ${i}
+        perl -pi -e 's#^(port * = ).*#${1}$ENV{SQL_SERVER_PORT}#' ${i}
+        perl -pi -e 's#^(dbname * = ).*#${1}$ENV{VMAIL_DB}#' ${i}
+
+        cat >> ${TIP_FILE} <<EOF
+        - $i
+EOF
+    done
+
+    echo 'export status_postfix_config_vhost_mysql="DONE"' >> ${STATUS_FILE}
+}
+
+# Starting config.
+postfix_config_virtual_host()
+{
+    check_status_before_run postfix_config_vhost_mysql
+
+    echo 'export status_postfix_config_virtual_host="DONE"' >> ${STATUS_FILE}
+}
+
+postfix_config_sasl()
+{
+    ECHO_DEBUG "Configure SMTP SASL authentication."
+
+    # For SASL auth
+    postconf -e smtpd_sasl_auth_enable="yes"
+    postconf -e smtpd_sasl_local_domain=''
+    postconf -e broken_sasl_auth_clients="yes"
+    postconf -e smtpd_sasl_security_options="noanonymous"
+
+    # Offer SASL authentication only after a TLS-encrypted session has been established
+    postconf -e smtpd_tls_auth_only='yes'
+
+    POSTCONF_IREDAPD=''
+    if [ X"${USE_IREDAPD}" == X"YES" ]; then
+        POSTCONF_IREDAPD="check_policy_service inet:${IREDAPD_BIND_HOST}:${IREDAPD_LISTEN_PORT},"
+    fi
+
+    POSTCONF_CLUEBRINGER=''
+    if [ X"${USE_CLUEBRINGER}" == X"YES" ]; then
+        POSTCONF_CLUEBRINGER="check_policy_service inet:${CLUEBRINGER_BIND_HOST}:${CLUEBRINGER_BIND_PORT},"
+
+        postconf -e smtpd_recipient_restrictions="reject_unknown_sender_domain, reject_unknown_recipient_domain, reject_non_fqdn_sender, reject_non_fqdn_recipient, reject_unlisted_recipient, ${POSTCONF_IREDAPD} ${POSTCONF_CLUEBRINGER} permit_mynetworks, permit_sasl_authenticated, reject_invalid_hostname, reject_unauth_destination, reject_unauth_pipelining, reject_rbl_client b.barracudacentral.org, permit"
+        postconf -e smtpd_end_of_data_restrictions="${POSTCONF_IREDAPD} ${POSTCONF_CLUEBRINGER}"
+
+    else
+        postconf -e smtpd_recipient_restrictions="reject_unknown_sender_domain, reject_unknown_recipient_domain, reject_non_fqdn_sender, reject_non_fqdn_recipient, reject_unlisted_recipient, ${POSTCONF_IREDAPD} permit_mynetworks, permit_sasl_authenticated, reject_invalid_hostname, reject_unauth_destination, reject_unauth_pipelining, reject_rbl_client b.barracudacentral.org, permit"
+
+    fi
+
+    echo 'export status_postfix_config_sasl="DONE"' >> ${STATUS_FILE}
+}
+
+postfix_config_tls()
+{
+    ECHO_DEBUG "Enable TLS/SSL support in Postfix."
+
+    postconf -e smtp_use_tls='yes'
+    postconf -e smtpd_use_tls='yes'
+    postconf -e smtpd_tls_received_header='yes'
+    
+    postconf -e smtpd_tls_security_level='may'
+    postconf -e smtpd_tls_loglevel='0'
+    postconf -e smtpd_tls_key_file="${SSL_KEY_FILE}"
+    postconf -e smtpd_tls_cert_file="${SSL_CERT_FILE}"
+    postconf -e smtpd_tls_CAfile="${SSL_CA_BUNDLE_FILE}"
+    postconf -e tls_random_source='dev:/dev/urandom'
+
+    cat >> ${POSTFIX_FILE_MASTER_CF} <<EOF
+smtps     inet  n       -       n       -       -       smtpd
+  -o syslog_name=postfix/smtps
+  -o smtpd_tls_wrappermode=yes
+  -o smtpd_sasl_auth_enable=yes
+
+submission inet n       -       n       -       -       smtpd
+  -o smtpd_tls_security_level=encrypt
+  -o smtpd_sasl_auth_enable=yes
+  -o smtpd_client_restrictions=permit_mynetworks,permit_sasl_authenticated,reject
+#  -o content_filter=smtp-amavis:[${AMAVISD_SERVER}]:10026
 
 EOF
 
-    echo 'export status_postfix_setup="DONE"' >> ${STATUS_FILE}
+    echo 'export status_postfix_config_tls="DONE"' >> ${STATUS_FILE}
 }

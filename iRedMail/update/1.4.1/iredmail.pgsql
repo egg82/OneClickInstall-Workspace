@@ -1,3 +1,0 @@
-ALTER TABLE mailbox ADD COLUMN "enablesogowebmail" CHAR(1) NOT NULL DEFAULT 'y';
-ALTER TABLE mailbox ADD COLUMN "enablesogocalendar" CHAR(1) NOT NULL DEFAULT 'y';
-ALTER TABLE mailbox ADD COLUMN "enablesogoactivesync" CHAR(1) NOT NULL DEFAULT 'y';

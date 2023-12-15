@@ -1,2 +1,0 @@
-ALTER TABLE mailbox ADD COLUMN `enablequota-status` TINYINT(1) NOT NULL DEFAULT 1;
-CREATE INDEX `enablequota-status` ON mailbox (`enablequota-status`);

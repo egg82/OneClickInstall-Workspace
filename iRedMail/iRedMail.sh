@@ -1,25 +1,10 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-# Author:   Zhang Huangbin (zhb@iredmail.org)
-
-#---------------------------------------------------------------------
-# This file is part of iRedMail, which is an open source mail server
-# solution for Red Hat(R) Enterprise Linux, CentOS, Debian and Ubuntu.
-#
-# iRedMail is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# iRedMail is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with iRedMail.  If not, see <http://www.gnu.org/licenses/>.
-#---------------------------------------------------------------------
-
+os=`cat /etc/issue |grep -c CentOS`
+if [ $os = "0" ]; then
+    echo "This script work only on CentOS. Exit."
+    exit
+fi
 # ------------------------------
 # Define some global variables.
 # ------------------------------
@@ -36,21 +21,19 @@ cd ${ROOTDIR}
 export CONF_DIR="${ROOTDIR}/conf"
 export FUNCTIONS_DIR="${ROOTDIR}/functions"
 export DIALOG_DIR="${ROOTDIR}/dialog"
-export PKG_DIR="${ROOTDIR}/pkgs/pkgs"
-export PKG_MISC_DIR="${ROOTDIR}/pkgs/misc"
+export PKG_DIR="${ROOTDIR}/pkgs"
 export SAMPLE_DIR="${ROOTDIR}/samples"
 export PATCH_DIR="${ROOTDIR}/patches"
 export TOOLS_DIR="${ROOTDIR}/tools"
-export RUNTIME_DIR="${ROOTDIR}/runtime"
 
-[[ -d ${RUNTIME_DIR} ]] || mkdir -p ${RUNTIME_DIR}
 
+. ${ROOTDIR}/config
 . ${CONF_DIR}/global
 . ${CONF_DIR}/core
 
 # Check downloaded packages, pkg repository.
 [ -f ${STATUS_FILE} ] && . ${STATUS_FILE}
-if [ X"${status_get_all}" != X"DONE" ]; then
+if [ X"${status_get_all}" != X"DONE" -a X"${CONFIGURATION_ONLY}" != X"YES" ]; then
     cd ${ROOTDIR}/pkgs/ && bash get_all.sh
     if [ X"$?" == X'0' ]; then
         cd ${ROOTDIR}
@@ -67,70 +50,65 @@ fi
 # interrupt iRedMail installation.
 chmod go+rx /dev/null /dev/*random &>/dev/null
 
+LOCAL_MYSQL_SERVER=""
+
 check_env
 
-# Define paths of some directories
-# Directory used to store mailboxes
-export STORAGE_MAILBOX_DIR="${STORAGE_MAILBOX_DIR:=${STORAGE_BASE_DIR}/${STORAGE_NODE}}"
-# Directory used to store sieve filters
-export SIEVE_DIR="${SIEVE_DIR:=${STORAGE_BASE_DIR}/sieve}"
-# Directory used to store daily SQL/LDAP backup files
-export BACKUP_DIR="${BACKUP_DIR:=${STORAGE_BASE_DIR}/backup}"
-# Directory used to store public IMAP folders
-export PUBLIC_MAILBOX_DIR="${PUBLIC_MAILBOX_DIR:=${STORAGE_BASE_DIR}/public}"
-
-# Domain admin email address
-export DOMAIN_ADMIN_EMAIL="${DOMAIN_ADMIN_NAME}@${FIRST_DOMAIN}"
+if [ "$SQL_SERVER" == '127.0.0.1' ] || [ "$SQL_SERVER" == "localhost" ]; then
+    export MYSQL_EXTERNAL='NO'
+else
+    export MYSQL_EXTERNAL='YES'
+fi
 
 # Import global variables in specified order.
 . ${CONF_DIR}/web_server
-. ${CONF_DIR}/openldap
 . ${CONF_DIR}/mysql
-. ${CONF_DIR}/postgresql
-. ${CONF_DIR}/dovecot
 . ${CONF_DIR}/postfix
-. ${CONF_DIR}/mlmmj
+. ${CONF_DIR}/policy_server
+. ${CONF_DIR}/dovecot
 . ${CONF_DIR}/amavisd
-. ${CONF_DIR}/iredapd
-. ${CONF_DIR}/memcached
-. ${CONF_DIR}/sogo
 . ${CONF_DIR}/clamav
 . ${CONF_DIR}/spamassassin
-. ${CONF_DIR}/roundcube
-. ${CONF_DIR}/netdata
+. ${CONF_DIR}/awstats
+. ${CONF_DIR}/opendkim
 . ${CONF_DIR}/fail2ban
-. ${CONF_DIR}/iredadmin
-. ${CONF_DIR}/logwatch
+. ${CONF_DIR}/server_api
+. ${CONF_DIR}/spam_trainer
 
-# Import functions in specified order.
-if [ X"${DISTRO}" == X'FREEBSD' ]; then
-    # Install packages from freebsd ports tree.
-    . ${FUNCTIONS_DIR}/packages_freebsd.sh
-else
-    . ${FUNCTIONS_DIR}/packages.sh
+# ------------------------------
+# Import functions.
+# ------------------------------
+# All packages.
+. ${FUNCTIONS_DIR}/packages.sh
+
+if [ ${MYSQL_EXTERNAL} == "YES" ]; then
+    echo "Waiting for external MySql response"
+
+    while ! mysqladmin ping -h ${MYSQL_SERVER} -P ${MYSQL_SERVER_PORT} -u ${MYSQL_ROOT_USER} --password=${MYSQL_ROOT_PASSW} --silent; do
+          sleep 1
+    done
 fi
 
+# User/Group: vmail. We will export vmail uid/gid here.
 . ${FUNCTIONS_DIR}/system_accounts.sh
 . ${FUNCTIONS_DIR}/web_server.sh
-. ${FUNCTIONS_DIR}/ldap_server.sh
 . ${FUNCTIONS_DIR}/mysql.sh
-. ${FUNCTIONS_DIR}/postgresql.sh
+
 
 # Switch backend
 . ${FUNCTIONS_DIR}/backend.sh
 
 . ${FUNCTIONS_DIR}/postfix.sh
+. ${FUNCTIONS_DIR}/policy_server.sh
 . ${FUNCTIONS_DIR}/dovecot.sh
-. ${FUNCTIONS_DIR}/mlmmj.sh
 . ${FUNCTIONS_DIR}/amavisd.sh
-. ${FUNCTIONS_DIR}/iredapd.sh
 . ${FUNCTIONS_DIR}/clamav.sh
 . ${FUNCTIONS_DIR}/spamassassin.sh
-. ${FUNCTIONS_DIR}/roundcubemail.sh
-. ${FUNCTIONS_DIR}/sogo.sh
+. ${FUNCTIONS_DIR}/awstats.sh
+. ${FUNCTIONS_DIR}/opendkim.sh
 . ${FUNCTIONS_DIR}/fail2ban.sh
-. ${FUNCTIONS_DIR}/iredadmin.sh
-. ${FUNCTIONS_DIR}/netdata.sh
+. ${FUNCTIONS_DIR}/server_api.sh
+. ${FUNCTIONS_DIR}/spam_trainer.sh
 . ${FUNCTIONS_DIR}/optional_components.sh
 . ${FUNCTIONS_DIR}/cleanup.sh
 
@@ -141,6 +119,9 @@ fi
 # Install all required packages.
 check_status_before_run install_all || (ECHO_ERROR "Package installation error, please check the output log.\n\n" && exit 255)
 
+
+
+echo -e '\n\n'
 cat <<EOF
 
 ********************************************************************
@@ -148,17 +129,43 @@ cat <<EOF
 ********************************************************************
 EOF
 
-
-check_status_before_run generate_ssl_keys
+# User/Group: vmail
 check_status_before_run add_required_users
-check_status_before_run backend_install
-check_status_before_run postfix_setup
-check_status_before_run dovecot_setup
+
+# Apache & PHP.
 check_status_before_run web_server_config
-check_status_before_run mlmmj_config
-check_status_before_run mlmmjadmin_config
+
+# Install & Config Backend: MySQL.n
+check_status_before_run backend_install
+
+# Postfix.
+check_status_before_run postfix_config_basic && \
+check_status_before_run postfix_config_virtual_host && \
+check_status_before_run postfix_config_sasl && \
+check_status_before_run postfix_config_tls
+
+# Policy service for Postfix: Policyd.
+check_status_before_run policy_server_config
+
+# Dovecot.
+check_status_before_run enable_dovecot
+
+# ClamAV.
 check_status_before_run clamav_config
+
+# Amavisd-new.
 check_status_before_run amavisd_config
+
+# SpamAssassin.
 check_status_before_run sa_config
+
+# Optional components.
 optional_components
+
+# Create SSL/TLS cert file.
+if [ ! -f ${SSL_CERT_FILE} -o ! -f ${SSL_KEY_FILE} -o ! -f ${SSL_CA_BUNDLE_FILE} ]; then
+    check_status_before_run generate_ssl_keys
+fi
+
+# Cleanup.
 check_status_before_run cleanup

@@ -7,26 +7,35 @@
 # -------------------------------------------
 optional_components()
 {
-    # iRedAPD.
-    check_status_before_run iredapd_setup
 
-    # iRedAdmin.
-    [ X"${USE_IREDADMIN}" == X'YES' ] && \
-        check_status_before_run iredadmin_setup
-
-    # Roundcubemail.
-    [ X"${USE_ROUNDCUBE}" == X'YES' ] && \
-        check_status_before_run rcm_setup
-
-    # SOGo
-    [ X"${USE_SOGO}" == X'YES' ] && \
-        check_status_before_run sogo_setup
+    # OpenDkim.
+    if  [ X"${CONFIGURATION_ONLY}" != X"YES" ]; then  
+        check_status_before_run opendkim_install 
+    fi
+    check_status_before_run opendkim_config
 
     # Fail2ban.
-    [ X"${USE_FAIL2BAN}" == X'YES' -a X"${DISTRO}" != X'FREEBSD' ] && \
-        check_status_before_run fail2ban_setup
+    if [ X"${CONFIGURATION_ONLY}" != X"YES" ]; then
+        check_status_before_run fail2ban_install 
+    fi
+    check_status_before_run fail2ban_config
 
-    # netdata.
-    [ X"${USE_NETDATA}" == X'YES' ] && \
-        check_status_before_run netdata_setup
+    # ServerAPI.
+    if [ X"${CONFIGURATION_ONLY}" != X"YES" ]; then
+        check_status_before_run server_api_install
+    fi
+    check_status_before_run server_api_config
+
+    # SpamTrainer.
+    if [ X"${CONFIGURATION_ONLY}" != X"YES" ]; then 
+        check_status_before_run spam_trainer_install
+    fi
+    check_status_before_run spam_trainer_config
+
+    # Awstats.
+    [ X"${USE_AWSTATS}" == X"YES" -a X"${WEB_SERVER_IS_APACHE}" == X'YES' ] && \
+        check_status_before_run awstats_config_basic && \
+        check_status_before_run awstats_config_weblog && \
+        check_status_before_run awstats_config_maillog && \
+        check_status_before_run awstats_config_crontab
 }

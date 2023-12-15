@@ -1,6 +1,6 @@
 #!/bin/bash
 
-HTTPD_LOG_DIR="/var/log/httpd"
+NGINX_LOG_DIR="/var/log/nginx"
 TMP_SQL="/tmp/cluebringer_init_sql.${RANDOM}${RANDOM}"
 HOSTNAME="$(hostname -f)"
 
@@ -44,8 +44,8 @@ export CONF_DIR="${ROOTDIR}/conf"
 . ${ROOTDIR}/functions/postfix.sh
 . ${ROOTDIR}/functions/mysql.sh
 
-if [ ! -d ${HTTPD_LOG_DIR} ]; then
-    mkdir -p ${HTTPD_LOG_DIR}
+if [ ! -d ${NGINX_LOG_DIR} ]; then
+    mkdir -p ${NGINX_LOG_DIR}
 fi
 
 rm -f /var/run/syslogd.pid
@@ -55,8 +55,8 @@ rm -f /var/run/opendkim/opendkim.pid
 if [ ${MYSQL_SERVER} != "127.0.0.1" ] && [ ${MYSQL_SERVER} != "localhost" ]; then
     echo "Waiting for external MySql response"
 
-    while ! (echo > /dev/tcp/${MYSQL_SERVER}/${MYSQL_SERVER_PORT}) >/dev/null 2>&1; do
-        sleep 1
+    while ! mysqladmin ping -h ${MYSQL_SERVER} -P ${MYSQL_SERVER_PORT} -u ${MYSQL_ROOT_USER} --password=${MYSQL_ROOT_PASSW} --silent; do
+          sleep 1
     done
 else
 # start services
@@ -90,7 +90,7 @@ ${MYSQL_CLIENT_ROOT} <<EOF
 SOURCE ${TMP_SQL};
 EOF
 
-systemctl start cbpolicyd crond rsyslog amavisd clamd clamd.amavisd dovecot fail2ban nginx postfix spamassassin
+systemctl start crond dovecot rsyslog amavisd postfix cbpolicyd clamd clamd.amavisd nginx opendkim spamassassin fail2ban spamtrainer
 
 rm -f ${MYSQL_DEFAULTS_FILE_ROOT} &>/dev/null
 rm -f ${TMP_SQL} 2>/dev/null

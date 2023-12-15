@@ -6,123 +6,61 @@
 
 add_user_vmail()
 {
-    ECHO_DEBUG "Create system account: ${SYS_USER_VMAIL}:${SYS_GROUP_VMAIL} (${SYS_USER_VMAIL_UID}:${SYS_GROUP_VMAIL_GID})."
+    ECHO_DEBUG "Create HOME folder for vmail user."
 
-    # Create STORAGE_BASE_DIR and set correct owner and permission.
-    if [ ! -d ${STORAGE_BASE_DIR} ]; then
-        mkdir -p ${STORAGE_BASE_DIR} >> ${INSTALL_LOG} 2>&1
-        chown ${SYS_USER_ROOT}:${SYS_GROUP_ROOT} ${STORAGE_BASE_DIR} >> ${INSTALL_LOG} 2>&1
-        chmod -R 0755 ${STORAGE_BASE_DIR} >> ${INSTALL_LOG} 2>&1
-    fi
+    homedir="$(dirname $(echo ${VMAIL_USER_HOME_DIR} | sed 's#/$##'))"
+    [ -L ${homedir} ] && rm -f ${homedir}
+    [ -d ${homedir} ] || mkdir -p ${homedir}
+    [ -d ${STORAGE_MAILBOX_DIR} ] || mkdir -p ${STORAGE_MAILBOX_DIR}
 
-    [ -d ${STORAGE_MAILBOX_DIR} ] || mkdir -p ${STORAGE_MAILBOX_DIR} >> ${INSTALL_LOG} 2>&1
-    [ -d ${PUBLIC_MAILBOX_DIR} ] || mkdir -p ${PUBLIC_MAILBOX_DIR} >> ${INSTALL_LOG} 2>&1
+    ECHO_DEBUG "Create system account: ${VMAIL_USER_NAME}:${VMAIL_GROUP_NAME} (${VMAIL_USER_UID}:${VMAIL_USER_GID})."
 
     # vmail/vmail must has the same UID/GID on all supported Linux/BSD
-    # distributions, required by cluster environment. e.g. GlusterFS.
-    add_sys_user_group \
-        ${SYS_USER_VMAIL} \
-        ${SYS_GROUP_VMAIL} \
-        ${SYS_USER_VMAIL_UID} \
-        ${SYS_GROUP_VMAIL_GID} >> ${INSTALL_LOG} 2>&1
+    # distributions, required by cluster environment. e.g. GlusterFS.   
+    groupadd -g ${VMAIL_USER_GID} ${VMAIL_GROUP_NAME} >> ${INSTALL_LOG} 2>&1
+    useradd -m \
+        -u ${VMAIL_USER_UID} \
+        -g ${VMAIL_GROUP_NAME} \
+        -s ${SHELL_NOLOGIN} \
+        -d ${VMAIL_USER_HOME_DIR} \
+        ${VMAIL_USER_NAME} >> ${INSTALL_LOG} 2>&1
 
-    if [ -n "${MAILBOX_INDEX_DIR}" ]; then
-        if [ ! -d ${MAILBOX_INDEX_DIR} ]; then
-            ECHO_DEBUG "Create directory used to store mailbox indexes: ${MAILBOX_INDEX_DIR}."
-            mkdir -p ${MAILBOX_INDEX_DIR} >> ${INSTALL_LOG} 2>&1
-            chown -R ${SYS_USER_VMAIL}:${SYS_GROUP_VMAIL} ${MAILBOX_INDEX_DIR}
-            chmod -R 0700 ${MAILBOX_INDEX_DIR}
-        fi
-    fi
+    rm -f ${VMAIL_USER_HOME_DIR}/.* >> ${INSTALL_LOG} 2>&1
 
-    ECHO_DEBUG "Create directory used to store global sieve filters: ${SIEVE_DIR}."
-    mkdir -p ${SIEVE_DIR} &>/dev/null
-
-    export DOMAIN_ADMIN_MAILDIR_HASH_PART="${FIRST_DOMAIN}/$(hash_maildir --no-timestamp ${DOMAIN_ADMIN_NAME})"
-    export DOMAIN_ADMIN_MAILDIR_FULL_PATH="${STORAGE_MAILBOX_DIR}/${DOMAIN_ADMIN_MAILDIR_HASH_PART}"
-
+    export FIRST_USER_MAILDIR_HASH_PART="$(hash_domain ${FIRST_DOMAIN})/$(hash_maildir ${FIRST_USER})"
+    export FIRST_USER_MAILDIR_FULL_PATH="${STORAGE_MAILBOX_DIR}/${FIRST_USER_MAILDIR_HASH_PART}"
     # Create maildir.
     # We will deliver emails with sensitive info of iRedMail installation
     # to postmaster immediately after installation completed.
     # NOTE: 'Maildir/' is appended by Dovecot (defined in dovecot.conf).
-    export DOMAIN_ADMIN_MAILDIR_INBOX="${DOMAIN_ADMIN_MAILDIR_FULL_PATH}/Maildir/new"
-    mkdir -p ${DOMAIN_ADMIN_MAILDIR_INBOX} >> ${INSTALL_LOG} 2>&1
+    export FIRST_USER_MAILDIR_INBOX="${FIRST_USER_MAILDIR_FULL_PATH}/Maildir/new"
+    mkdir -p ${FIRST_USER_MAILDIR_INBOX} >> ${INSTALL_LOG} 2>&1
 
-    # set owner/group and permission.
-    chown -R ${SYS_USER_VMAIL}:${SYS_GROUP_VMAIL} ${STORAGE_MAILBOX_DIR} ${PUBLIC_MAILBOX_DIR} ${SIEVE_DIR}
-    chmod -R 0700 ${STORAGE_MAILBOX_DIR} ${PUBLIC_MAILBOX_DIR} ${SIEVE_DIR}
+    # Reset permission for home directory. Required by FIRST_USER_MAILDIR_FULL_PATH.
+    chown -R ${VMAIL_USER_NAME}:${VMAIL_GROUP_NAME} ${VMAIL_USER_HOME_DIR}
+    chmod -R 0700 ${VMAIL_USER_HOME_DIR}
 
-    # backup directory
-    [ -d ${BACKUP_DIR} ] || mkdir -p ${BACKUP_DIR} &>/dev/null
-    chown ${SYS_USER_ROOT}:${SYS_GROUP_ROOT} ${BACKUP_DIR}
-    chmod 0700 ${BACKUP_DIR}
+    ECHO_DEBUG "Create directory to store user sieve rule files: ${SIEVE_DIR}."
+    mkdir -p ${SIEVE_DIR} && \
+    chown -R ${VMAIL_USER_NAME}:${VMAIL_GROUP_NAME} ${SIEVE_DIR} && \
+    chmod -R 0700 ${SIEVE_DIR}
 
     cat >> ${TIP_FILE} <<EOF
 Mail Storage:
+    - Root directory: ${VMAIL_USER_HOME_DIR}
     - Mailboxes: ${STORAGE_MAILBOX_DIR}
-    - Mailbox indexes: ${MAILBOX_INDEX_DIR}
-    - Global sieve filters: ${SIEVE_DIR}
-    - Backup scripts and backup copies: ${BACKUP_DIR}
+    - Backup scripts and copies: ${BACKUP_DIR}
 
 EOF
 
     echo 'export status_add_user_vmail="DONE"' >> ${STATUS_FILE}
 }
 
-add_user_iredadmin()
-{
-    add_sys_user_group \
-        ${SYS_USER_IREDADMIN} \
-        ${SYS_GROUP_IREDADMIN} \
-        ${SYS_USER_IREDADMIN_UID} \
-        ${SYS_GROUP_IREDADMIN_GID}
-
-    echo 'export status_add_user_iredadmin="DONE"' >> ${STATUS_FILE}
-}
-
-add_user_mlmmj()
-{
-    add_sys_user_group \
-        ${SYS_USER_MLMMJ} \
-        ${SYS_GROUP_MLMMJ} \
-        ${SYS_USER_MLMMJ_UID} \
-        ${SYS_GROUP_MLMMJ_GID} \
-        ${MLMMJ_HOME_DIR}
-
-    echo 'export status_add_user_mlmmj="DONE"' >> ${STATUS_FILE}
-}
-
-add_user_iredapd()
-{
-    add_sys_user_group \
-        ${SYS_USER_IREDAPD} \
-        ${SYS_GROUP_IREDAPD} \
-        ${SYS_USER_IREDAPD_UID} \
-        ${SYS_GROUP_IREDAPD_GID}
-
-    echo 'export status_add_user_iredapd="DONE"' >> ${STATUS_FILE}
-}
-
-add_user_netdata()
-{
-    add_sys_user_group \
-        ${SYS_USER_NETDATA} \
-        ${SYS_GROUP_NETDATA} \
-        ${SYS_USER_NETDATA_UID} \
-        ${SYS_GROUP_NETDATA_GID}
-
-    echo 'export status_add_user_netdata="DONE"' >> ${STATUS_FILE}
-}
-
 
 add_required_users()
 {
-    ECHO_INFO "Create required system accounts."
+    ECHO_INFO "Create required system accounts: vmail, iredapd."
+    check_status_before_run add_user_vmail    
 
-    check_status_before_run add_user_vmail
-    check_status_before_run add_user_mlmmj
-    check_status_before_run add_user_iredadmin
-    check_status_before_run add_user_iredapd
-
-    [ X"${USE_NETDATA}" == X'YES' ] && check_status_before_run add_user_netdata
+    echo 'export status_add_required_users="DONE"' >> ${STATUS_FILE}
 }
