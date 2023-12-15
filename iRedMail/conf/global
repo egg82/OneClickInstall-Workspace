@@ -197,6 +197,9 @@ if [ X"${KERNEL_NAME}" == X"LINUX" ]; then
     elif grep '\ 8' /etc/redhat-release &>/dev/null; then
         # version 8.x
         export DISTRO_VERSION='8'
+    elif grep '\ 9' /etc/redhat-release &>/dev/null; then
+        # version 9.x
+        export DISTRO_VERSION='9'
     else
         export UNSUPPORTED_RELEASE='YES'
     fi
