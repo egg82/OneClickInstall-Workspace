@@ -33,14 +33,15 @@ DOCUMENT_IMAGE_NAME="onlyoffice/documentserver-ee";
 MAIL_IMAGE_NAME="onlyoffice/mailserver";
 CONTROLPANEL_IMAGE_NAME="onlyoffice/controlpanel";
 ELASTICSEARCH_IMAGE_NAME="onlyoffice/elasticsearch";
-MYSQL_IMAGE_NAME="mysql";
+MYSQL_IMAGE_NAME="mariadb";
 
 COMMUNITY_VERSION="";
 DOCUMENT_VERSION="";
 MAIL_VERSION="";
 CONTROLPANEL_VERSION="";
 ELASTICSEARCH_VERSION="7.16.3";
-MYSQL_VERSION="5.5";
+MYSQL_IMAGE_VERSION="11.2";
+MYSQL_VERSION="8.2";
 
 DOCUMENT_SERVER_HOST="";
 
@@ -941,9 +942,9 @@ make_directories () {
 	mkdir -p "$BASE_DIR/ControlPanel/data";
 	mkdir -p "$BASE_DIR/ControlPanel/logs";
 
-	mkdir -p "$BASE_DIR/mysql/conf.d";
-	mkdir -p "$BASE_DIR/mysql/data";
-	mkdir -p "$BASE_DIR/mysql/initdb";
+	mkdir -p "$BASE_DIR/mysql/conf.d"; chown 999:999 "$BASE_DIR/mysql/conf.d";
+	mkdir -p "$BASE_DIR/mysql/data"; chown 999:999 "$BASE_DIR/mysql/data";
+	mkdir -p "$BASE_DIR/mysql/initdb"; chown 999:999 "$BASE_DIR/mysql/initdb";
 	mkdir -p "$BASE_DIR/mysql/logs";
 	mkdir -p "$BASE_DIR/mysql/.private";
 }
@@ -1128,7 +1129,7 @@ sql_mode = 'NO_ENGINE_SUBSTITUTION'
 max_connections = 1000
 max_allowed_packet = 1048576000
 group_concat_max_len = 2048
-log-error = /var/log/mysql/error.log" > ${BASE_DIR}/mysql/conf.d/${PRODUCT}.cnf
+log-error = /var/log/mysql/error.log" > ${BASE_DIR}/mysql/conf.d/${PRODUCT}.cnf && chown 999:999 ${BASE_DIR}/mysql/conf.d/${PRODUCT}.cnf
 			[[ "$(awk -F. '{ printf("%d%03d%03d%03d", $1,$2,$3,$4); }' <<< $MYSQL_VERSION)" -lt "8000000000" ]] && echo "tls_version = TLSv1.2" >> ${BASE_DIR}/mysql/conf.d/${PRODUCT}.cnf
 			chmod 0644 ${BASE_DIR}/mysql/conf.d/${PRODUCT}.cnf
 		fi
@@ -1145,7 +1146,7 @@ ALTER USER 'root'@'localhost' IDENTIFIED $MYSQL_AUTHENTICATION_PLUGIN BY '$MYSQL
 GRANT ALL PRIVILEGES ON *.* TO '$MYSQL_ROOT_USER'@'%';
 GRANT ALL PRIVILEGES ON *.* TO '$MYSQL_USER'@'%';
 GRANT ALL PRIVILEGES ON *.* TO '$MYSQL_MAIL_USER'@'%';
-FLUSH PRIVILEGES;" > ${BASE_DIR}/mysql/initdb/setup.sql
+FLUSH PRIVILEGES;" > ${BASE_DIR}/mysql/initdb/setup.sql && chown 999:999 ${BASE_DIR}/mysql/initdb/setup.sql
         fi
 
 
@@ -1174,7 +1175,7 @@ FLUSH PRIVILEGES;" > ${BASE_DIR}/mysql/initdb/setup.sql
 		args+=(-v "$BASE_DIR/mysql/logs:/var/log/mysql");
 		args+=(-e "MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD");
 		args+=(-e "MYSQL_DATABASE=$MYSQL_DATABASE");
-		args+=("$MYSQL_IMAGE_NAME:$MYSQL_VERSION");
+		args+=("$MYSQL_IMAGE_NAME:$MYSQL_IMAGE_VERSION");
 
 		docker run --net ${NETWORK} -i -t -d --restart=always "${args[@]}";
 
@@ -2022,7 +2023,7 @@ pull_mysql_server () {
 			MYSQL_VERSION=$(get_available_version "$MYSQL_IMAGE_NAME");
 		fi
 
-		pull_image ${MYSQL_IMAGE_NAME} ${MYSQL_VERSION}
+		pull_image ${MYSQL_IMAGE_NAME} ${MYSQL_IMAGE_VERSION}
 	fi
 }
 
@@ -2285,7 +2286,7 @@ start_installation () {
 
 	if [ "$UPDATE" != "true" ]; then
 		check_ports
-		MYSQL_VERSION="8.0.29";
+		MYSQL_VERSION="8.2";
 
 		if [ "$INSTALL_MAIL_SERVER" == "true" ]; then
 			if [[ -z ${MAIL_DOMAIN_NAME} ]]; then

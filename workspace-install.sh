@@ -18,25 +18,27 @@ DOCKER="";
 HELP="false";
 
 while [ "$1" != "" ]; do
-        case $1 in
+    case $1 in
+        -ls | --localscripts )
+            if [ "$2" == "true" ] || [ "$2" == "false" ]; then
+                PARAMETERS="$PARAMETERS ${1}";
+                LOCAL_SCRIPTS=$2
+                shift
+            fi
+            ;;
 
-	-ls | --localscripts )
-	        if [ "$2" == "true" ] || [ "$2" == false ]; then
-			PARAMETERS="$PARAMETERS ${1}";
-			LOCAL_SCRIPTS=$2
-			shift
-		fi
-         ;;
+        "-?" | -h | --help )
+            HELP="true"
+            DOCKER="true"
+            PARAMETERS="$PARAMETERS -ht workspace-install.sh";
+            ;;
 
-	 "-?" | -h | --help )
-	        HELP="true"
-		DOCKER="true"
-		PARAMETERS="$PARAMETERS -ht workspace-install.sh";
-	 ;;
-
-	esac
-	PARAMETERS="$PARAMETERS ${1}";
-	shift
+        *)
+            # Only add parameters that are not part of the cases
+            PARAMETERS="$PARAMETERS ${1}";
+            ;;
+    esac
+    shift
 done
 
 PARAMETERS="$PARAMETERS -it WORKSPACE";
@@ -106,9 +108,12 @@ fi
 
 if [ "$DOCKER" == "true" ]; then
 	if [ "${LOCAL_SCRIPTS}" == "true" ]; then
+	    if ! [ -f install.sh ]; then
+		    curl -s -O https://raw.githubusercontent.com/egg82/OneClickInstall-Workspace/master/install.sh
+		fi
 		bash install.sh ${PARAMETERS}
 	else
-		curl -s -O http://download.onlyoffice.com/install/install.sh
+		curl -s -O https://raw.githubusercontent.com/egg82/OneClickInstall-Workspace/master/install.sh
 		bash install.sh ${PARAMETERS}
 		rm install.sh
 	fi
@@ -120,23 +125,29 @@ else
 		REV_PARTS=(${REV//\./ });
 		REV=${REV_PARTS[0]};
 
-		if [[ "${DIST}" == CentOS* ]] && [ ${REV} -lt 7 ]; then
-			echo "CentOS 7 or later is required";
+		if [[ "${DIST}" == CentOS* || "${DIST}" == Red\ Hat* || "${DIST}" == Alma* || "${DIST}" == Rocky* ]] && [ ${REV} -lt 7 ]; then
+			echo "CentOS/RHEL/Alma/Rocky 7 or later is required";
 			exit 1;
 		fi
 
 		if [ "${LOCAL_SCRIPTS}" == "true" ]; then
+		    if ! [ -f install-RedHat.sh ]; then
+			    curl -s -O https://raw.githubusercontent.com/egg82/OneClickInstall-Workspace/master/install-RedHat.sh
+			fi
 			bash install-RedHat.sh ${PARAMETERS}
 		else
-			curl -s -O http://download.onlyoffice.com/install/install-RedHat.sh
+			curl -s -O https://raw.githubusercontent.com/egg82/OneClickInstall-Workspace/master/install-RedHat.sh
 			bash install-RedHat.sh ${PARAMETERS}
 			rm install-RedHat.sh
 		fi
 	elif [ -f /etc/debian_version ] ; then
 		if [ "${LOCAL_SCRIPTS}" == "true" ]; then
+		    if ! [ -f install-Debian.sh ]; then
+			    curl -s -O https://raw.githubusercontent.com/egg82/OneClickInstall-Workspace/master/install-Debian.sh
+			fi
 			bash install-Debian.sh ${PARAMETERS}
 		else
-			curl -s -O http://download.onlyoffice.com/install/install-Debian.sh
+			curl -s -O https://raw.githubusercontent.com/egg82/OneClickInstall-Workspace/master/install-Debian.sh
 			bash install-Debian.sh ${PARAMETERS}
 			rm install-Debian.sh
 		fi
