@@ -60,7 +60,7 @@ if [ ${MYSQL_SERVER} != "127.0.0.1" ] && [ ${MYSQL_SERVER} != "localhost" ]; the
     done
 else
 # start services
-    systemctl start mysqld
+    service mysqld start
 fi
 
 # update rows in 'greylisting_whitelist'
@@ -90,7 +90,19 @@ ${MYSQL_CLIENT_ROOT} <<EOF
 SOURCE ${TMP_SQL};
 EOF
 
-systemctl start crond dovecot rsyslog amavisd postfix cbpolicyd clamd clamd.amavisd nginx opendkim spamassassin fail2ban spamtrainer
+service crond start
+service dovecot start
+service rsyslog start
+service amavisd start
+service postfix start
+service cbpolicyd start
+service clamd start
+service clamd.amavisd start
+service nginx start
+service opendkim start
+service spamassassin start
+service fail2ban start
+service spamtrainer start
 
 rm -f ${MYSQL_DEFAULTS_FILE_ROOT} &>/dev/null
 rm -f ${TMP_SQL} 2>/dev/null
