@@ -1135,7 +1135,7 @@ log-error = /var/log/mysql/error.log" > ${BASE_DIR}/mysql/conf.d/${PRODUCT}.cnf 
 		fi
 		
 		if [ "$INSTALL_MAIL_SERVER" = "true" ]; then
-			if [[ "${MYSQL_IMAGE_NAME}" = *mariadb* ]]; then
+			if [[ "${MYSQL_IMAGE_NAME}" =~ .*mariadb.* ]]; then
 			    MYSQL_AUTHENTICATION_PLUGIN=""
 			else
 				if [[ "$(awk -F. '{ printf("%d%03d%03d%03d", $1,$2,$3,$4); }' <<< $MYSQL_VERSION)" -ge "8000034000" ]]; then
