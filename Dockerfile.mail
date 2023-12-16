@@ -36,7 +36,8 @@ RUN dnf -y install glibc-locale-source glibc-langpack-en gzip && \
     && \
     dnf clean all && \
     ln -s /usr/bin/python2 /usr/bin/python; \
-    python -m pip install mysqlclient mysql-connector-python
+    python -m pip install mysqlclient mysql-connector-python; \
+    cp /usr/src/iRedMail/samples/spam_trainer/spamtrainer /etc/init.d/
 
 RUN find /usr/src/iRedMail -type d -name pkgs -prune -o -type f -exec dos2unix {} \; && \
     chmod 755 /usr/src/iRedMail/pkgs_install.sh && \
