@@ -1,0 +1,85 @@
+#!/bin/sh
+#
+# nginx: The nginx HTTP and reverse proxy server
+#
+# chkconfig: 2345 80 30
+# description: Nginx is a high-performance web and proxy server.
+
+# Source function library
+. /etc/rc.d/init.d/functions
+
+prog=nginx
+exec=/usr/sbin/nginx
+pidfile=/run/nginx.pid
+lockfile=/var/lock/subsys/$prog
+configtest="/usr/sbin/nginx -t"
+
+start() {
+    echo -n $"Starting $prog: "
+    [ -f $pidfile ] && rm -f $pidfile
+    $configtest
+    if [ $? -eq 0 ]; then
+        daemon --pidfile $pidfile $exec
+        retval=$?
+        echo
+        [ $retval -eq 0 ] && touch $lockfile
+    else
+        retval=1
+    fi
+    return $retval
+}
+
+stop() {
+    echo -n $"Stopping $prog: "
+    killproc -p $pidfile $prog -QUIT
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && rm -f $lockfile
+    return $retval
+}
+
+restart() {
+    configtest
+    if [ $? -eq 0 ]; then
+        stop
+        start
+    else
+        return 1
+    fi
+}
+
+reload() {
+    echo -n $"Reloading $prog: "
+    $configtest
+    if [ $? -eq 0 ]; then
+        killproc -p $pidfile $prog -HUP
+        retval=$?
+    else
+        retval=1
+    fi
+    echo
+    return $retval
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    reload)
+        reload
+        ;;
+    status)
+        status -p $pidfile $prog
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|restart|reload|status}"
+        exit 2
+esac
+
+exit $?

@@ -1,0 +1,68 @@
+#!/bin/bash
+#
+# dovecot: Dovecot IMAP/POP3 email server
+#
+# chkconfig: - 80 20
+# description: Dovecot is an IMAP/POP3 server for Linux/UNIX-like systems.
+
+# Source function library
+. /etc/rc.d/init.d/functions
+
+prog="dovecot"
+exec="/usr/sbin/dovecot"
+prestart="/usr/libexec/dovecot/prestartscript"
+reload="/usr/bin/doveadm reload"
+stop="/usr/bin/doveadm stop"
+pidfile="/var/run/dovecot/master.pid"
+lockfile="/var/lock/subsys/$prog"
+
+start() {
+    echo -n $"Starting $prog: "
+    $prestart
+    daemon $exec -F
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && touch $lockfile
+    return $retval
+}
+
+stop() {
+    echo -n $"Stopping $prog: "
+    $stop
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && rm -f $lockfile
+    return $retval
+}
+
+reload() {
+    echo -n $"Reloading $prog: "
+    $reload
+    retval=$?
+    echo
+    return $retval
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    reload)
+        reload
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    status)
+        status -p $pidfile $prog
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|restart|reload|status}"
+        exit 2
+esac
+
+exit $?

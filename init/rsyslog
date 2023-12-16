@@ -1,0 +1,70 @@
+#!/bin/sh
+#
+# rsyslog: System Logging Service
+#
+# chkconfig: 2345 12 88
+# description: Enhanced system logging and kernel message trapping daemon
+
+# Source function library
+. /etc/rc.d/init.d/functions
+
+prog=rsyslog
+exec=/usr/sbin/rsyslogd
+config=/etc/sysconfig/rsyslog
+lockfile=/var/lock/subsys/$prog
+pidfile=/var/run/rsyslogd.pid
+
+[ -e $config ] && . $config
+
+start() {
+    echo -n $"Starting $prog: "
+    daemon --pidfile $pidfile $exec $SYSLOGD_OPTIONS
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && touch $lockfile
+    return $retval
+}
+
+stop() {
+    echo -n $"Stopping $prog: "
+    killproc -p $pidfile $prog
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && rm -f $lockfile
+    return $retval
+}
+
+restart() {
+    stop
+    start
+}
+
+reload() {
+    echo -n $"Reloading $prog: "
+    killproc -p $pidfile $prog -HUP
+    retval=$?
+    echo
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    reload)
+        reload
+        ;;
+    status)
+        status -p $pidfile $prog
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|restart|reload|status}"
+        exit 2
+esac
+
+exit $?

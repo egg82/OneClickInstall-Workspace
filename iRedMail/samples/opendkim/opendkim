@@ -34,7 +34,7 @@
 
 . /etc/rc.d/init.d/functions
 
-prefix=/usr/local
+prefix=/usr
 exec_prefix=${prefix}
 
 RETVAL=0

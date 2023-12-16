@@ -90,15 +90,15 @@ ${MYSQL_CLIENT_ROOT} <<EOF
 SOURCE ${TMP_SQL};
 EOF
 
-service crond start
-service dovecot start
-service rsyslog start
-service amavisd start
-service postfix start
-service cbpolicyd start
-service clamd start
-service clamd.amavisd start
-service nginx start
+/etc/init.d/crond start
+/etc/init.d/dovecot start
+/etc/init.d/rsyslog start
+/etc/init.d/amavisd start
+/etc/init.d/postfix start
+/etc/init.d/cbpolicyd start
+/etc/init.d/clamd start
+/etc/init.d/clamd.amavisd start
+/etc/init.d/nginx start
 service opendkim start
 service spamassassin start
 service fail2ban start

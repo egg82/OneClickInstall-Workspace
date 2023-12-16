@@ -1,0 +1,76 @@
+#!/bin/sh
+#
+# crond - this script starts and stops the crond daemon
+#
+# chkconfig: - 85 15
+# description: Crond is a system daemon that runs scheduled tasks \
+#              at regular intervals.
+#
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+exec=/usr/sbin/crond
+prog=crond
+config=/etc/sysconfig/crond
+
+[ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
+
+lockfile=/var/lock/subsys/$prog
+
+start() {
+    [ -x $exec ] || exit 5
+    [ -f $config ] || exit 6
+    echo -n $"Starting $prog: "
+    daemon $exec $CRONDARGS
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && touch $lockfile
+    return $retval
+}
+
+stop() {
+    echo -n $"Stopping $prog: "
+    killproc $prog
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && rm -f $lockfile
+    return $retval
+}
+
+restart() {
+    stop
+    start
+}
+
+reload() {
+    echo -n $"Reloading $prog: "
+    killproc $prog -HUP
+    RETVAL=$?
+    echo
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    reload)
+        reload
+        ;;
+    condrestart|try-restart)
+        [ -f $lockfile ] && restart || :
+        ;;
+    status)
+        status $prog
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|try-restart|reload|condrestart}"
+        exit 2
+esac
+exit $?

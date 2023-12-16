@@ -11,6 +11,7 @@ LABEL onlyoffice.mailserver.release-date="${RELEASE_DATE}" \
       maintainer="Ascensio System SIA <support@onlyoffice.com>" \
       securitytxt="https://www.onlyoffice.com/.well-known/security.txt"
 
+COPY init /etc/init.d/
 COPY conf/sa-update /etc/cron.d/
 COPY conf/dovecot.repo /etc/yum.repos.d/
 COPY conf/iRedMail.repo /etc/yum.repos.d/
@@ -23,18 +24,19 @@ RUN dnf -y install glibc-locale-source glibc-langpack-en gzip && \
     crb enable && \
     dnf -y install wget curl ca-certificates nss && \
     dnf -y install \
-        tar gcc findutils bind-utils iproute make perl iptables initscripts \
+        tar gcc findutils bind-utils iproute make perl iptables initscripts rsyslog \
         postfix mysql-server mysql perl-DBD-MySQL \
         php php-common php-gd php-xml php-pdo php-mysqlnd php-ldap php-pgsql php-mbstring php-pecl-apcu php-intl \
         nginx mod_ssl dovecot dovecot-pigeonhole https://download.policyd.org/v2.0.14/cluebringer-2.0.14-1.noarch.rpm \
         amavisd-new clamd clamav-db clamav-update spamassassin altermime perl-LDAP perl-Mail-SPF unrar \
-        python2-sqlalchemy python2-setuptools python2-PyMySQL python2-pip awstats \
-        libopendkim libopendkim-devel mysql-devel readline-devel gcc-c++ sendmail-milter sendmail-devel libbsd-devel \
+        python2-sqlalchemy python2-setuptools python2-PyMySQL python2-pip python2-devel awstats \
+        opendkim opendkim-tools libopendkim libopendkim-devel mysql-devel readline-devel gcc-c++ sendmail-milter sendmail-devel libbsd-devel \
         readline libyaml-devel libffi-devel openssl-devel bison \
         curl-devel sqlite-devel which libtool unzip bzip2 acl patch tmpwatch crontabs dos2unix logwatch imapsync opendbx-mysql \
     && \
     dnf clean all && \
-    ln -s /usr/bin/python2 /usr/bin/python
+    ln -s /usr/bin/python2 /usr/bin/python; \
+    python -m pip install mysqlclient mysql-connector-python
 
 RUN find /usr/src/iRedMail -type d -name pkgs -prune -o -type f -exec dos2unix {} \; && \
     chmod 755 /usr/src/iRedMail/pkgs_install.sh && \

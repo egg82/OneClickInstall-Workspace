@@ -1,0 +1,74 @@
+#!/bin/sh
+#
+# postfix: Postfix Mail Transport Agent
+#
+# chkconfig: 2345 80 30
+# description: Postfix is a Mail Transport Agent, which is the program \
+#              that moves mail from one machine to another.
+
+# Source function library
+. /etc/rc.d/init.d/functions
+
+prog=postfix
+exec=/usr/sbin/postfix
+pidfile=/var/spool/postfix/pid/master.pid
+lockfile=/var/lock/subsys/$prog
+config=/etc/sysconfig/network
+
+[ -e $config ] && . $config
+
+start() {
+    echo -n $"Starting $prog: "
+    [ -x /usr/sbin/restorecon ] && /usr/sbin/restorecon -R /var/spool/postfix/pid
+    [ -x /usr/libexec/postfix/aliasesdb ] && /usr/libexec/postfix/aliasesdb
+    [ -x /usr/libexec/postfix/chroot-update ] && /usr/libexec/postfix/chroot-update
+    daemon --pidfile $pidfile $exec start
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && touch $lockfile
+    return $retval
+}
+
+stop() {
+    echo -n $"Stopping $prog: "
+    killproc -p $pidfile $prog
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && rm -f $lockfile
+    return $retval
+}
+
+restart() {
+    stop
+    start
+}
+
+reload() {
+    echo -n $"Reloading $prog: "
+    $exec reload
+    retval=$?
+    echo
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    reload)
+        reload
+        ;;
+    status)
+        status -p $pidfile $prog
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|restart|reload|status}"
+        exit 2
+esac
+
+exit $?

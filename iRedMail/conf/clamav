@@ -25,7 +25,7 @@ export CLAMAV_GROUP='clamav'
 export CLAMAV_CLAMD_RC_SCRIPT_NAME='clamd'
 export CLAMAV_FRESHCLAMD_RC_SCRIPT_NAME='freshclamd'
 
-export CLAMD_CONF='/etc/clamd.conf'
+export CLAMD_CONF='/etc/clamd.d/scan.conf'
 export CLAMD_LOGDIR='/var/log/clamav'
 export CLAMD_LOGFILE='/var/log/clamav/clamd.log'
 # CLAMD_BIND_HOST is configured in conf/global
