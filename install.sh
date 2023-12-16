@@ -926,7 +926,7 @@ docker_login () {
 make_directories () {
 	mkdir -p "$BASE_DIR/setup";
 
-	mkdir -p "$BASE_DIR/DocumentServer/data";
+	mkdir -p "$BASE_DIR/DocumentServer/data"; chown 109:111 "$BASE_DIR/DocumentServer/data";
 	mkdir -p "$BASE_DIR/DocumentServer/logs";
 	mkdir -p "$BASE_DIR/DocumentServer/fonts";
 	mkdir -p "$BASE_DIR/DocumentServer/forgotten";
