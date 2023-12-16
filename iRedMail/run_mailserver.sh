@@ -99,9 +99,9 @@ EOF
 /etc/init.d/clamd start
 /etc/init.d/clamd.amavisd start
 /etc/init.d/nginx start
-service opendkim start
-service spamassassin start
-service fail2ban start
+/etc/init.d/opendkim start
+/etc/init.d/spamassassin start
+/etc/init.d/fail2ban start
 service spamtrainer start
 
 rm -f ${MYSQL_DEFAULTS_FILE_ROOT} &>/dev/null
