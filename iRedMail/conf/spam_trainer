@@ -9,4 +9,4 @@ export BOOTSTRAP_PYPA_SETUP="bootstrap.pypa.io.setup.py"
 
 export SPAM_TRAINER_SETTINGS="${SAMPLE_DIR}/spam_trainer/settings.py"
 export SPAM_TRAINER_START_SCRIPT="${SAMPLE_DIR}/spam_trainer/spamtrainer"
-export SPAM_TRAINER_SAMPLE="${SAMPLE_DIR}/spam_trainer/spamtrainer.py"
+export SPAM_TRAINER_SAMPLE="${SAMPLE_DIR}/spam_trainer/spamtrainer-new.py"
