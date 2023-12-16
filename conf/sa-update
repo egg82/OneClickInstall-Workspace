@@ -1,0 +1,1 @@
+10 4 * * * root /usr/share/spamassassin/sa-update.cron 2>&1 >> /var/log/sa-update.log
